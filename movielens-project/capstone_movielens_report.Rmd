@@ -81,7 +81,11 @@ The following code is made availavle by the course to fetch the data from the gr
 #                                            genres = as.character(genres))
 # movielens <- read.csv("/Users/ssaha/Documents/datascience/data-science-harvardx/capstone/project_movielens/movieLens_short.dat", as.is = TRUE)
 # movielens <- left_join(ratings, movies, by = "movieId")
-movielens <- read.csv("~/Documents/datascience/data-science-harvardx/movielens.csv")
+
+#win
+movielens <- read.csv("movielensRed.csv")
+
+#movielens <- read.csv("~/Documents/datascience/data-science-harvardx/movielens.csv")
 
 
 # Validation set will be 10% of MovieLens data

@@ -37,7 +37,7 @@ if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-proj
 #                                            genres = as.character(genres))
 # movielens <- read.csv("/Users/ssaha/Documents/datascience/data-science-harvardx/capstone/project_movielens/movieLens_short.dat", as.is = TRUE)
 # movielens <- left_join(ratings, movies, by = "movieId")
-movielens <- read.csv("~/Documents/datascience/harvardx-datascience-capstone/movielens-project/movielens.csv")
+movielens <- read.csv("movielens-project/movielensRed.csv")
 
 
 # Validation set will be 10% of MovieLens data
