@@ -749,25 +749,6 @@ rmse_table %>% knitr::kable(caption = "RMSE Values for All Models")
 
 # RMSE on validation set with final chosen model
 
-```{r, echo=TRUE, eval=TRUE}
-# RMSE Objectives:
-# ==================================================================================
-# 0 points: No RMSE 
-# 5 points: RMSE >= 0.90000 AND/OR the reported RMSE is the result of overtraining
-#           (validation set - the final hold-out test set - ratings used 
-#           for anything except reporting the final RMSE value) AND/OR the reported RMSE 
-#           is the result of simply copying and running code provided in previous courses 
-#           in the series.
-# 10 points: 0.86550 <= RMSE <= 0.89999
-# 15 points: 0.86500 <= RMSE <= 0.86549
-# 20 points: 0.86490 <= RMSE <= 0.86499
-# 25 points: RMSE < 0.86490
-# --------------------------------------------------------------------------------
-
-# Keep only those rows in validation set which have 
-# movieId and userId existing in edx_train dataset
-```
-
 ```{r, echo=FALSE, eval=TRUE}
 # Calculate and store the model parameters to be used in the MovieRecommender Model
 # with the optimal value of lambda
