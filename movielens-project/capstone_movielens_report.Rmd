@@ -30,18 +30,10 @@ A movie recommendation system is developed using the tools - the powerful R lang
 **Access dataset**: *<http://files.grouplens.org/datasets/movielens/ml-10m.zip>*
 
 ## Goal of the project
-The goal of the project is train a model that attains an RMSE value of less than **0.86490** on the final validation set. The final validation set will neither be analyzed for its contents nor be used to train the model in any manner. Although RMSE values greater than the **0.86490** would also fetch some passing score as per the project goals but the work done in the project has successfully developed a model of RMSE in the perfect target of below **0.86490**.
+The goal of the project is train a rating predictor model that attains an RMSE value of less than **0.86490** on the final validation set. The final validation set is neither to be analyzed for its contents nor be used to train the model in any manner. Although RMSE values greater than the **0.86490** would also fetch some passing score as per the project goals but the work done in the project has successfully developed a model of RMSE in the perfect target of below **0.86490**.
 
 ## Key steps to reach the final model
-The initial parts of the project will help to gain insights into the data through tabular and visual means. This is done in R language and use the publicly available powerful *R* libraries like ggplot. Next, models are trained with the different available effects independently and in cumulative fashion. Studying and leveraging the observations from such models, a final model is developed with the proper order of effects as well as acoomodating linearization to compensate for any outliers. A final model is developed using the training set which gives an RMSE < 0.86490 on the validation step.
-
-
-<!--
-1. An introduction/overview/executive summary section that describes the dataset and summarizes the goal of the project and key steps that were performed
-2. A methods/analysis section that explains the process and techniques used, including data cleaning, data exploration and visualization, insights gained, and your modeling approach
-3. A results section that presents the modeling results and discusses the model performance
-4. A conclusion section that gives a brief summary of the report, its limitations and future work
--->
+The initial parts of the project will help to gain insights into the data through tabular and visual means. This is done in R language and use the publicly available powerful *R* libraries like ggplot. Next, models are trained with the different available effects independently and in cumulative fashion. Studying and leveraging the observations from such models, a final model is developed with the proper order of effects as well as acoomodating linearization to compensate for any outliers. A final model is developed using the training set which gives an RMSE < 0.86490 on the validation set.
 
 \newpage
 
@@ -50,15 +42,22 @@ The initial parts of the project will help to gain insights into the data throug
 
 ## Fetch the data
 
-The following code is made availavle by the course to fetch the data from the grouplens website and extract a working dataset (edx) and a final validation dataset (validation) out of the dataset.
+The following code is made available by the course to fetch the data from the grouplens website and extract a working dataset (edx) and a final validation dataset (validation) out of the dataset.
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
 
- # Install any missing packages
- if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
- if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
- if(!require(data.table)) install.packages("data.table", repos = "http://cran.us.r-project.org")
- if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-project.org")
- 
+# Install any missing packages
+if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
+if(!require(data.table)) install.packages("data.table", repos = "http://cran.us.r-project.org")
+if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-project.org")
+
+# Library loading for the report 
+library(lubridate)
+library(dplyr)
+library(tidyverse)
+library(tidyr)
+library(ggplot2)
+
 ##########################################################
 # Create edx set, validation set (final hold-out test set)
 ##########################################################
@@ -66,30 +65,22 @@ The following code is made availavle by the course to fetch the data from the gr
 # MovieLens 10M dataset:
 # https://grouplens.org/datasets/movielens/10m/
 # http://files.grouplens.org/datasets/movielens/ml-10m.zip
-# dl <- tempfile()
-# download.file("http://files.grouplens.org/datasets/movielens/ml-10m.zip", dl)
-# 
-# ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-10M100K/ratings.dat"))),
-#                  col.names = c("userId", "movieId", "rating", "timestamp"))
-# 
-# movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
-# colnames(movies) <- c("movieId", "title", "genres")
-# 
-# # if using R 4.0 or later
-# movies <- as.data.frame(movies) %>% mutate(movieId = as.numeric(movieId),
-#                                            title = as.character(title),
-#                                            genres = as.character(genres))
-# movielens <- read.csv("/Users/ssaha/Documents/datascience/data-science-harvardx/capstone/project_movielens/movieLens_short.dat", as.is = TRUE)
-# movielens <- left_join(ratings, movies, by = "movieId")
+dl <- tempfile()
+download.file("http://files.grouplens.org/datasets/movielens/ml-10m.zip", dl)
 
-#win
-movielens <- read.csv("movielensRed.csv")
+ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-10M100K/ratings.dat"))),
+                 col.names = c("userId", "movieId", "rating", "timestamp"))
 
-#movielens <- read.csv("~/Documents/datascience/data-science-harvardx/movielens.csv")
+movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
+colnames(movies) <- c("movieId", "title", "genres")
 
+movies <- as.data.frame(movies) %>% mutate(movieId = as.numeric(movieId),
+                                           title = as.character(title),
+                                           genres = as.character(genres))
+movielens <- left_join(ratings, movies, by = "movieId")
 
 # Validation set will be 10% of MovieLens data
-set.seed(27, sample.kind="Rounding")
+set.seed(1, sample.kind="Rounding")
 test_index <- createDataPartition(y = movielens$rating, times = 1, p = 0.1, list = FALSE)
 edx <- movielens[-test_index,]
 temp <- movielens[test_index,]
@@ -103,20 +94,15 @@ validation <- temp %>%
 removed <- anti_join(temp, validation)
 edx <- rbind(edx, removed)
 
-rm(dl, ratings, movies, test_index, temp, removed) #add movielens for production
+rm(dl, ratings, movies, test_index, temp, movielens, removed)
 
 ```
 
 ## Cleanup the data for more valuable features
 
-A re-usable function is defined to extract and add new columns for release and review years from already available data. The edX dataset is processed here. The validation dataset will be processed after the final model is developed.
+A re-usable function is defined to extract and add new columns for release and review years from already available data. The edX dataset is processed here. The validation dataset will also be mutated to add the release and review years after the final model is developed.
 ```{r, echo = FALSE, warning=FALSE, message=FALSE}
-# Library loading for the report 
-library(lubridate)
-library(dplyr)
-library(tidyverse)
-library(tidyr)
-library(ggplot2)
+
 ```
 
 ```{r, echo = TRUE, warning=FALSE, message=FALSE}
@@ -187,11 +173,11 @@ edx %>% group_by(movieId) %>%
 ```
 
 ## Separate individual genres and ranking them by the total number of ratings in the edx dataset
-```{r, echo=FALSE}
-# edx %>% separate_rows(genres, sep = "\\|") %>%
-#   group_by(genres) %>%
-#   summarise("No. of Ratings" = n(), "Average Rating" = round(mean(rating), 3)) %>%
-#   arrange(desc("No. of Ratings")) %>% knitr::kable(caption = "Individual genres & their number of rankings")
+```{r, echo=FALSE, eval=TRUE}
+edx %>% separate_rows(genres, sep = "\\|") %>%
+  group_by(genres) %>%
+  summarise("No. of Ratings" = n(), "Average Rating" = round(mean(rating), 3)) %>%
+  arrange(desc("No. of Ratings")) %>% knitr::kable(caption = "Individual genres & their number of rankings")
 ```
 
 ## Plot average rating by genre for genre combinations with at least 50,000 ratings
@@ -271,13 +257,12 @@ test_index <- createDataPartition(y = edx$rating, times = 1, p = 0.1, list = FAL
 edx_train <- edx[-test_index,]
 edx_test <- edx[test_index,]
 
-# Keep only those rows in edx_test set which have 
+# Keep only those rows in edx_test and validation set which have 
 # movieId and userId existing in edx_train dataset
 edx_test <- edx_test %>% 
             semi_join(edx_train, by = "movieId") %>%
             semi_join(edx_train, by = "userId")
 
-# Do the same for the validation set as well
 validation <- validation %>% 
               semi_join(edx_train, by = "movieId") %>%
               semi_join(edx_train, by = "userId")
