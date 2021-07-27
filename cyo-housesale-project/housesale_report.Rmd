@@ -22,81 +22,22 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This project is part of the final course - **Data Science: Capstone** in HarvardX's multi-part **Data Science Professional Certificate** series offered via the edX platform.
 
-A house price recommendation system is developed using the tools - the powerful R language & it's associated libraries on the RStudio - and the expert training provided in this series. The 10M version of the MovieLens dataset is used to train the prediction model. The data is cleaned up, analyzed and used to develop a model that can predict movie ratings within a target RMSE. 
+The project studies the dataset - **House Sales in King County, USA** available on Kaggle. The different features are studied and its impact evaluated on the pricing. Thus, a house price recommendation system is developed to predict the house prices. 
 
 ## About the dataset
-*GroupLens* is a research group in the *Department of Computer Science and Engineering* at the *University of Minnesota*. The 10M version of the MovieLens dataset is provided by GroupLens that contains **10000054** ratings and **95580** tags applied to **10681** movies by **71567** users of the online movie recommender service MovieLens. \
-**Go to movielens website**: *<https://grouplens.org/datasets/movielens/10m>* \
-**Access dataset**: *<http://files.grouplens.org/datasets/movielens/ml-10m.zip>*
+The dataset - **House Sales in King County, USA: Predict house price using regression** is taken from Kaggle. Kaggle, a subsidiary of Google LLC, is an online community of data scientists and machine learning practitioners. Kaggle allows users to find and publish data sets, explore and build models in a web-based data-science environment, work with other data scientists and machine learning engineers, and enter competitions to solve data science challenges. It contains price data of **21613** houses wherin every house has **21** features. \
+**Go to kaggle page**: *<https://www.kaggle.com/harlfoxem/housesalesprediction>* 
 
 ## Goal of the project
-The goal of the project is train a rating predictor model that attains an RMSE value of less than **0.86490** on the final validation set. The final validation set is neither to be analyzed for its contents nor be used to train the model in any manner. Although RMSE values greater than the **0.86490** would also fetch some passing score as per the project goals but the work done in the project has successfully developed a model of RMSE in the perfect target of below **0.86490**.
+The goal of the project is study the dataset and develop a model that can predict house prices with reasonable accuracy.
 
 ## Key steps to reach the final model
-The initial parts of the project will help to gain insights into the data through tabular and visual means. This is done in R language and use the publicly available powerful *R* libraries like ggplot. Next, models are trained with the different available effects independently and in cumulative fashion. Studying and leveraging the observations from such models, a final model is developed with the proper order of effects as well as acoomodating linearization to compensate for any outliers. A final model is developed using the training set which gives an RMSE < 0.86490 on the validation set.
+The initial parts of the project will help to gain insights into the data through tabular and visual means. This is done in R language and use the publicly available powerful *R* libraries like ggplot. Next, models are trained with the different alogrithms and the model with the best RMSE is chosen to validate against the final validation set.
 
 \newpage
 
 <!-------------------------------------------------------------------------------------------------------->
 # Ready the data
-
-## Fetch the data
-
-The following code is made available by the course to fetch the data from the grouplens website and extract a working dataset (edx) and a final validation dataset (validation) out of the dataset.
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
-
-# Install any missing packages
-if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
-if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
-if(!require(data.table)) install.packages("data.table", repos = "http://cran.us.r-project.org")
-if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-project.org")
-
-# Library loading for the report 
-library(lubridate)
-library(dplyr)
-library(tidyverse)
-library(tidyr)
-library(ggplot2)
-
-##########################################################
-# Create edx set, validation set (final hold-out test set)
-##########################################################
-
-# MovieLens 10M dataset:
-# https://grouplens.org/datasets/movielens/10m/
-# http://files.grouplens.org/datasets/movielens/ml-10m.zip
-dl <- tempfile()
-download.file("http://files.grouplens.org/datasets/movielens/ml-10m.zip", dl)
-
-ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-10M100K/ratings.dat"))),
-                 col.names = c("userId", "movieId", "rating", "timestamp"))
-
-movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
-colnames(movies) <- c("movieId", "title", "genres")
-
-movies <- as.data.frame(movies) %>% mutate(movieId = as.numeric(movieId),
-                                           title = as.character(title),
-                                           genres = as.character(genres))
-movielens <- left_join(ratings, movies, by = "movieId")
-
-# Validation set will be 10% of MovieLens data
-set.seed(1, sample.kind="Rounding")
-test_index <- createDataPartition(y = movielens$rating, times = 1, p = 0.1, list = FALSE)
-edx <- movielens[-test_index,]
-temp <- movielens[test_index,]
-
-# Make sure userId and movieId in validation set are also in edx set
-validation <- temp %>%
-  semi_join(edx, by = "movieId") %>%
-  semi_join(edx, by = "userId")
-
-# Add rows removed from validation set back into edx set
-removed <- anti_join(temp, validation)
-edx <- rbind(edx, removed)
-
-rm(dl, ratings, movies, test_index, temp, movielens, removed)
-
-```
 
 ## Cleanup the data for more valuable features
 
