@@ -121,10 +121,15 @@ housedata %>% filter(bedrooms < 15) %>% ggplot(aes(x=sqft_lot, y=price, group=sq
 #lm, svmLinear
 
 if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
-if(!require(xgboost)) install.packages("caret", repos = "http://cran.us.r-project.org")
-if(!require(xgboost)) install.packages("caret", repos = "http://cran.us.r-project.org")
+if(!require(xgboost)) install.packages("xgboost", repos = "http://cran.us.r-project.org")
+if(!require(Deriv)) install.packages("Deriv", repos = "http://cran.us.r-project.org")
+if(!require(neuralnet)) install.packages("neuralnet", repos = "http://cran.us.r-project.org")
+
 library(caret)
 library(dslabs)
+library(Deriv)
+library(neuralnet)
+library(xgboost)
 
 hdata <- housedata %>% select(-id, -date, -sqft_living15, -sqft_lot15)
 test_index <- createDataPartition(y = hdata$price, times = 1, p = 0.1, list = FALSE)
