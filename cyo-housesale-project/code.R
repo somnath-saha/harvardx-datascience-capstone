@@ -192,58 +192,71 @@ mean(acc)
 c <- 1
 
 # price, bedrooms, bathrooms, sqft_living, sqft_basement, sqft_above
+# floors, waterfront, view, condition, grade, bedrooms, bathrooms
 
 ## Model 6.0: Model with all features and regularization
 #```{r, echo=TRUE, eval=TRUE}
 # Regularise model, predict ratings and calculate RMSE for passed value of lambda
 mu <- mean(hdata_train$price)
+var1 <- "floors"
+var2 <- "waterfront"
+var3 <- "bedrooms"
+var4 <- "bathrooms"
+var5 <- "condition"
+var6 <- "grade"
+
+hdata_train <- hdata_train %>% select(price, floors, waterfront, bedrooms, bathrooms, condition)
+hdata_test <- hdata_test %>% select(price, floors, waterfront, bedrooms, bathrooms, condition)
+validation <- validation %>% select(price, floors, waterfront, bedrooms, bathrooms, condition)
+
 train_predict_get_rmse <- function(l, trainSet, testSet)
 {
    b_m   <- hdata_train %>%
-      group_by(bedrooms) %>%
+      group_by(floors) %>%
       summarise(b_m = sum(price - mu)/(n()+l))
    b_u   <- hdata_train %>%
-      left_join(b_m, by="bedrooms") %>%
-      group_by(bathrooms) %>%
+      left_join(b_m, by=var1) %>%
+      group_by(waterfront) %>%
       summarise(b_u = sum(price - b_m - mu)/(n()+l))
    b_g   <-        hdata_train %>%
-      left_join(b_m, by="bedrooms") %>%
-      left_join(b_u, by="bathrooms") %>%
-      group_by(sqft_living) %>%
+      left_join(b_m, by=var1) %>%
+      left_join(b_u, by=var2) %>%
+      group_by(bedrooms) %>%
       summarise(b_g = sum(price - b_m - b_u - mu)/(n()+l))
    b_yr_release <- hdata_train %>%
-      left_join(b_m, by="bedrooms") %>%
-      left_join(b_u, by="bathrooms") %>%
-      left_join(b_g, by="sqft_living") %>%
-      group_by(sqft_basement) %>%
+      left_join(b_m, by=var1) %>%
+      left_join(b_u, by=var2) %>%
+      left_join(b_g, by=var3) %>%
+      group_by(bathrooms) %>%
       summarise(b_yr_release = sum(price - b_m - b_u - b_g - mu)/(n()+l))
    b_yr_review <-  hdata_train %>%
-      left_join(b_m, by="bedrooms") %>%
-      left_join(b_u, by="bathrooms") %>%
-      left_join(b_g, by="sqft_living") %>%
-      left_join(b_yr_release, by="sqft_basement") %>%
-      group_by(sqft_above) %>%
+      left_join(b_m, by=var1) %>%
+      left_join(b_u, by=var2) %>%
+      left_join(b_g, by=var3) %>%
+      left_join(b_yr_release, by=var4) %>%
+      group_by(condition) %>%
       summarise(b_yr_review = sum(price - b_m - b_u - b_g - mu)/(n()+l))
    
    predicted_ratings <-  hdata_test %>%
-      left_join(b_m, by="bedrooms") %>%
-      left_join(b_u, by="bathrooms") %>%
-      left_join(b_g, by="sqft_living") %>%
-      left_join(b_yr_release, by="sqft_basement") %>%
-      left_join(b_yr_review, by="sqft_above") %>%
+      left_join(b_m, by=var1) %>%
+      left_join(b_u, by=var2) %>%
+      left_join(b_g, by=var3) %>%
+      left_join(b_yr_release, by=var4) %>%
+      left_join(b_yr_review, by=var5) %>%
       mutate(pred = mu + b_m + b_u + b_g + b_yr_release + b_yr_review) %>%
       pull(pred)
    
    return (RMSE(predicted_ratings, hdata_test$price))
 }
 # Generate a sequence of values for lambda ranging from 4 to 6 with 0.1 increments
-inc <- 0.1
-lambdas <- seq(4, 6, inc)
+inc <- 100
+lambdas <- seq(1, 10000, inc)
 
 x <- train_predict_get_rmse(10, hdata_train, hdata_test)
 
 # Get RMSE values for all the lambdas
 rmses <- sapply(lambdas, function(l) {  train_predict_get_rmse(l, hdata_train, hdata_test) })
+qplot(lambdas, rmses)
 
 # Assign optimal tuning parameter (lambda)
 optimal_lambda <- lambdas[which.min(rmses)]
