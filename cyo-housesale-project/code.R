@@ -37,11 +37,72 @@ library(neuralnet)
 library(xgboost)
 library(tidyverse)
 
+#Read data from CSV file
 housedata <- read.csv("cyo-housesale-project/kc_house_data.csv", as.is = TRUE)
 
+# Find number of unique values in every column
+colNames <- colnames(housedata)
+res <- sapply(colNames, function(c) {
+   n <- n_distinct(housedata[[c]])
+   #paste(c, '-', n)
+}, simplify="array")
+res
+
+# Convert apt columns into factors
+col_names_for_factor <- c('bedrooms' ,'bathrooms', "floors", "waterfront", "view", "condition", "grade", "zipcode")
+housedata[,col_names_for_factor] <- lapply(housedata[,col_names_for_factor] , factor)
+str(housedata)
+
+# Create scatterplot of all the house price columns vs price
+housedata %>%
+   gather(-price, key = "var", value = "value") %>%
+   ggplot(aes(x = value, y = price)) +
+   geom_point() +
+   stat_smooth() +
+   facet_wrap(~ var, scales = "free") +
+   theme_bw()
+
+# Convert theme and caption to be used for plots
 plot_theme <- theme(plot.caption = element_text(size = 7, face = "italic"), 
                     axis.title = element_text(size = 11))
 caption_text <- "PH125.9x | Source: Kaggle KC House Data | Somnath Saha"
+
+housedata %>% ggplot(aes(price)) +
+   geom_histogram(binwidth = 1000000, color = I("white"), fill = "lightblue") +
+   #scale_y_continuous(breaks = seq(0, 4500, 500)) +
+   #scale_x_continuous(breaks = seq(0, 1500000, 100000), labels = sprintf("%sK", seq(0, 1500, 100))) +
+   labs(x = "Price Range ($)", y = "count", caption = caption_text) 
+
+
+
+
+housedataplot <- housedata %>% select(-id, -date, -zipcode)
+
+#housedata %>% group_by(price > 1500000) %>% summarise(n = n())
+
+housedataplot %>%
+   gather(-price, key = "var", value = "value") %>%
+   ggplot(aes(x = value, y = price)) +
+   geom_point() +
+   stat_smooth() +
+   facet_wrap(~ var, scales = "free") +
+   theme_bw()
+
+
+cor(housedata$sqft_living, housedata$sqft_living15)
+cor(housedata$sqft_lot, housedata$sqft_lot15)
+
+housedata %>%
+   ggplot(aes(x = sqft_living, y = sqft_living15)) +
+   geom_point(color = "blue", alpha=0.5) +
+   stat_smooth() +
+   theme_bw()
+
+housedata %>%
+   ggplot(aes(x = sqft_lot15, y = sqft_lot)) +
+   geom_point(color = "blue", alpha=0.5) +
+   stat_smooth() +
+   theme_bw()
 
 # Distribution of all the different price of houses (Upto 8M)
 housedata %>% ggplot(aes(price)) +
@@ -119,7 +180,7 @@ housedata %>% filter(sqft_living < 10000) %>% ggplot(aes(x=sqft_living, y=price,
    labs(x = "sqft_living", y = "Price of House ($)", caption = caption_text) + plot_theme
 
 # Influence of number of sqft_lot on the price of house 
-housedata %>% filter(bedrooms < 15) %>% ggplot(aes(x=sqft_lot, y=price, group=sqft_lot)) +
+housedata %>% ggplot(aes(x=sqft_lot, y=price, group=sqft_lot)) +
    geom_boxplot() +
    scale_x_continuous(breaks = seq(0, 15, 1)) +
    scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
@@ -128,6 +189,11 @@ housedata %>% filter(bedrooms < 15) %>% ggplot(aes(x=sqft_lot, y=price, group=sq
 #Predicting values of price based on other available parameters
 #models <- c("glm", "lda", "naive_bayes", "svmLinear", "knn", "gamLoess", "multinom", "qda", "rf", "adaboost")
 #lm, svmLinear
+
+
+#Clean up data and remove outliers
+housedata %>% filter(sqft_living < 10000) 
+housedata %>% filter(bedrooms < 15)
 
 
 
@@ -142,7 +208,7 @@ hdata_test <- hdataTemp[test_index,]
 
 rm(hdata, hdataTemp)
 
-models <- c("glm", "", "", "svmLinear", "knn", "gamLoess", "multinom", "qda", "rf", "adaboost")
+models <- c("lm", "glm", "gbm", "svmLinear", "knn", "gamLoess", "rf")
 
 models2 <- c("xgbDART", "xgbLinear", "xgbTree", "elm", "neuralnet", "nnet", "pcaNNet")
 
@@ -150,20 +216,28 @@ hdata_train <- hdata_train %>% select(price, bedrooms, bathrooms, sqft_living, s
 hdata_test <- hdata_test %>% select(price, bedrooms, bathrooms, sqft_living, sqft_basement, sqft_above)
 validation <- validation %>% select(price, bedrooms, bathrooms, sqft_living, sqft_basement, sqft_above)
 
-fits <- lapply(models2, function(model){ 
+fits <- lapply(models, function(model){ 
    print(model)
    train(price ~ ., method = model, data = hdata_test)
 }) 
 pred <- sapply(fits, function(object) predict(object, newdata = validation))
+acc <- colMeans(pred == validation$price)
+RMSE(pred, validation$price)
+acc
+
+pred <- as.data.frame(pred)
+RMSE <- function (x, test) sqrt(mean((x-test$price)^2))
+#RMSE <- function (x, test) nrow(test)
+x <- lapply(pred, FUN = RMSE, validation)
+
+new_df <- as.data.frame(unlist(lapply(pred, FUN = RMSE, validation)), col.names=c("c","d"))
 
 fit1 <- train(price ~ ., method = "lm", data = hdata_test)
 fit1 <- train(price ~ ., method = "svmLinear", data = hdata_test)
 fit1 <- train(price ~ ., method = "knn", data = hdata_test)
 fit1 <- train(price ~ ., method = "gamLoess", data = hdata_test)
-fit1 <- train(price ~ ., method = "multinom", data = hdata_test)
 fit1 <- train(price ~ ., method = "rf", data = hdata_test)
 fit1 <- train(price ~ ., method = "glm", data = hdata_test)
-fit1 <- train(price ~ ., method = "gbm", data = hdata_test)
 
 fit1 <- train(price ~ ., method = "xgbDART", data = hdata_test)
 fit1 <- train(price ~ ., method = "xgbLinear", data = hdata_test)
