@@ -227,23 +227,34 @@ test_index <- createDataPartition(y = housedata$price, times = 1, p = 0.1, list 
 hdata_train <- housedata[-test_index,]
 hdata_validation <- housedata[test_index,]
 
-# Train for the following models
-models <- c("lm", "glm", "gbm", "knn", "gamLoess")
+# Define the RMSE function to be used with the models
+RMSE <- function (x, test) sqrt(mean((x-test)^2))
+
+# Naive model of mean value of prices as prediction value
+mu <- mean(hdata_train$price)
+mean_model_rmse <- RMSE(mu, hdata_validation$price)
+
+# Caret library to train better models
+# 1.Linear Regression 
+# 2.Generalized Linear Model 
+# 3.Stochastic Gradient Boosting 
+# 4.Generalized Additive Model using LOESS 
+models <- c("lm", "glm", "gbm", "gamLoess")
 fits <- lapply(models, function(model) { 
    print(model)
    train(price ~ ., method = model, data = hdata_train)
 }) 
 
 # Predict values on the validation set
-pred <- sapply(fits, function(object) predict(object, newdata = validation))
+pred <- sapply(fits, function(object) predict(object, newdata = hdata_validation))
 
-# Define and find the RMSE values for the results
-RMSE <- function (x, test) sqrt(mean((x-test$price)^2))
-res <- lapply(pred, FUN = RMSE, hdata_validation)
+# Define and find the RMSE values for the new models
+res <- as.data.frame(lapply(as.data.frame(pred), FUN = RMSE, hdata_validation$price))
+colnames(res) <- c("Linear Regression Model", "Generalized Linear Model", "Stochastic Gradient Boosting", "Gen Additive Model using LOESS")
 
-# Comparison with a naive model of predicting value with mean
-mu <- mean(housedata$price)
-   
+# Comparison with a naive model of predicting value with just the mean of all prices
+res["Mean Value Model"] = mean_model_rmse
+improvement_percentage <- ((mean_model_rmse - min(res[1,])) * 100 )/mean_model_rmse
    
 # #Advanced models to be executed on more powerful machines
 # models2 <- c("knn", svmLinear", "rf", "xgbDART", "xgbLinear", "xgbTree", "elm", "neuralnet", "nnet", "pcaNNet")
@@ -254,9 +265,6 @@ mu <- mean(housedata$price)
 # pred <- sapply(fits, function(object) predict(object, newdata = validation))
 # RMSE <- function (x, test) sqrt(mean((x-test$price)^2))
 # adv_res <- lapply(pred, FUN = RMSE, validation)
-
-
-
 
 # References :
 # https://en.wikipedia.org/wiki/Kaggle
