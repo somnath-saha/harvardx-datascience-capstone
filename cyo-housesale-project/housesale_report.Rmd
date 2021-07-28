@@ -16,19 +16,35 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 \newpage
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+#Install and load required packages
+if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
+if(!require(xgboost)) install.packages("xgboost", repos = "http://cran.us.r-project.org")
+if(!require(Deriv)) install.packages("Deriv", repos = "http://cran.us.r-project.org")
+if(!require(neuralnet)) install.packages("neuralnet", repos = "http://cran.us.r-project.org")
 
+library(caret)
+library(dslabs)
+library(Deriv)
+library(neuralnet)
+library(xgboost)
+library(tidyverse)
+
+#Read data from CSV file
+housedata <- read.csv("cyo-housesale-project/kc_house_data.csv", as.is = TRUE)
+```
 <!-------------------------------------------------------------------------------------------------------->
 # Overview
-
 This project is part of the final course - **Data Science: Capstone** in HarvardX's multi-part **Data Science Professional Certificate** series offered via the edX platform.
 
 The project studies the dataset - **House Sales in King County, USA** available on Kaggle. The different features are studied and its impact evaluated on the pricing. Thus, a house price recommendation system is developed to predict the house prices. 
 
 ## About the dataset
+
 The dataset - **House Sales in King County, USA: Predict house price using regression** is taken from Kaggle. \
 Kaggle, a subsidiary of Google LLC, is an online community of data scientists and machine learning practitioners. Kaggle allows users to find and publish data sets, explore and build models in a web-based data-science environment, work with other data scientists and machine learning engineers, and enter competitions to solve data science challenges. \
 The dataset contains **21613** rows and **21** columns. \
-**Go to kaggle page**: *<https://www.kaggle.com/harlfoxem/housesalesprediction>* 
+**Go to kaggle page**: *<https://www.kaggle.com/harlfoxem/housesalesprediction>**
 
 ## Goal of the project
 The goal of the project is to exhaustively study the dataset and get valuable insights through data processing and visualization. Furthermore different ML algorithms are used to train a model that can predict house price.
@@ -38,303 +54,221 @@ The goal of the project is to exhaustively study the dataset and get valuable in
 <!-------------------------------------------------------------------------------------------------------->
 # Data analysis and visualization
 
-## Brief look at edx dataset
+## Brief look at dataset
 
-### Structure of edx dataset: Column Names & Types
+### Structure of dataset: Column Names & Types
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
 str(housedata)
 ```
 
-### Data in edx dataset: First few rows
+### Data in dataset: First few rows
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
 head(housedata)
 ```
 
+### Unique values in every column
+<!-- Find number of unique values in every column -->
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+colNames <- colnames(housedata)
+sapply(colNames, function(c) {
+   n <- n_distinct(housedata[[c]])
+}, simplify="array")
+```
+
 <!-- Create plot theme to apply to ggplot2 element text throughout report-->
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
-#TODO
+plot_theme <- theme(plot.caption = element_text(size = 7, face = "italic"), 
+                    axis.title = element_text(size = 11))
+caption_text <- "PH125.9x | Source: Kaggle KC House Data | Somnath Saha"
 ```
 
-## Plot distribution of ratings in the edx dataset
-```{r, echo=FALSE}
-edx %>% ggplot(aes(rating)) +
-  geom_histogram(binwidth = 0.2, color = I("white"), fill = "skyblue") +
-  scale_y_continuous(breaks = seq(0, 3000000, 500000), labels = sprintf("%sM", seq(0, 3, 0.5))) +
-  scale_x_continuous(breaks = seq(0, 5, 0.5)) +
-  labs(x = "Rating", y = "Count of Ratings", caption = caption_text) + plot_theme
-```
-
-## Plot average rating by movie in the edx dataset
-```{r, echo=FALSE}
-edx %>% group_by(movieId) %>%
-  summarise(ave_rating = sum(rating)/n()) %>%
-  ggplot(aes(ave_rating)) +
-  geom_histogram(bins=30, color = I("white"), fill = "pink") +
-  labs(x = "Average rating", y = "Number of movies", caption = caption_text) + plot_theme
-```
-
-## Separate individual genres and ranking them by the total number of ratings in the edx dataset
-```{r, echo=FALSE, eval=TRUE}
-edx %>% separate_rows(genres, sep = "\\|") %>%
-  group_by(genres) %>%
-  summarise("No. of Ratings" = n(), "Average Rating" = round(mean(rating), 3)) %>%
-  arrange(desc("No. of Ratings")) %>% knitr::kable(caption = "Individual genres & their number of rankings")
-```
-
-## Plot average rating by genre for genre combinations with at least 50,000 ratings
+## Create scatterplot of all the features vs price
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
-edx %>% group_by(genres) %>%
-        summarize(n = n(), avg = mean(rating), se = sd(rating)/sqrt(n())) %>%
-        filter(n >= 50000) %>% 
-        mutate(genres = reorder(genres, avg)) %>%
-        ggplot(aes(x = genres, y = avg, ymin = avg - 2*se, ymax = avg + 2*se)) + 
-        geom_point() +
-        geom_errorbar() + 
-        theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
-        labs(x = "Genre combination", y = "Average Rating", caption = caption_text) + plot_theme
+housedata %>%
+   gather(-price, key = "var", value = "value") %>%
+   ggplot(aes(x = value, y = price)) +
+   geom_point(alpha = 0.25, color = lightblue) +
+   stat_smooth() +
+   facet_wrap(~ var, scales = "free") +
+   theme_bw()
 ```
 
-## Group and list top 10 movie titles based on number of ratings
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
-edx %>% group_by(title) %>%
-        summarise(n = n(), mu = mean(rating)) %>%
-        slice_max(n, n=10) %>%
-        select("Movie Name" = title, "No. of Ratings" = n, "Avg Rating" = mu) %>% 
-        knitr::kable(caption = "Top 10 movie titles based on number of ratings")
-```
 
-## Plot average rating by year of release in the edx dataset
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
-edx %>% group_by(release_year) %>%
-  summarise(rating = mean(rating)) %>%
-  ggplot(aes(release_year, rating)) +
-  geom_point() +
-  geom_smooth() +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
-  labs(x = "Release Year", y = "Average Rating", caption = caption_text) + plot_theme
-```
+# Distribution of all the different price of houses (Upto 8M)
+housedata %>% ggplot(aes(price)) +
+   geom_histogram(binwidth = 100000, color = I("blue"), fill = "skyblue") +
+   scale_y_continuous(breaks = seq(0, 4500, 500)) +
+   scale_x_continuous(breaks = seq(0, 8000000, 500000), labels = sprintf("%sM", seq(0, 8, 0.5))) +
+   labs(x = "Price Range ($)", y = "Number of Houses", caption = caption_text) + plot_theme
 
-## Plot number of ratings by year of release in the edx dataset
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
-edx %>% group_by(release_year) %>%
-  summarise(count = n()) %>%
-  ggplot(aes(release_year, count)) +
-  geom_line() +
-  scale_y_continuous(breaks = seq(0, 800000, 200000), labels = sprintf("%sK", seq(0, 800, 200))) +
-  labs(x = "Release Year", y = "Number of Ratings (in 1000s)", caption = caption_text)
-```
+# Distribution of the house prices within 1.5M 
+housedata %>% filter(price < 1000000) %>% ggplot(aes(price)) +
+   geom_histogram(binwidth = 100000, color = I("blue"), fill = "skyblue") +
+   scale_y_continuous(breaks = seq(0, 4500, 500)) +
+   scale_x_continuous(breaks = seq(0, 1500000, 100000), labels = sprintf("%sK", seq(0, 1500, 100))) +
+   labs(x = "Price Range ($)", y = "Number of Houses", caption = caption_text) + plot_theme
 
-## Plot average rating by date of review in the edx dataset
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
-edx %>% group_by(review_date) %>%
-  summarize(rating = mean(rating)) %>%
-  ggplot(aes(review_date, rating)) +
-  geom_point() +
-  geom_smooth() +
-  labs(x = "Review Date", y = "Average Rating", caption = caption_text)
-```
+# Distribution of all sqft_living values of houses
+housedata %>% filter(sqft_living < 10000) %>% ggplot(aes(sqft_living)) +
+   geom_histogram(binwidth = 1000, color = I("blue"), fill = "skyblue") +
+   scale_x_continuous(breaks = seq(0, 10000, 1000), labels = seq(0, 10000, 1000)) +
+   labs(x = "Living Room Size", y = "Count", caption = caption_text) + plot_theme
 
-## Plot average rating by year of review in the edx dataset
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
-edx %>% group_by(review_year) %>%
-  summarize(rating = mean(rating)) %>%
-  ggplot(aes(review_year, rating, label = round(rating, 2))) +
-  scale_x_continuous("Year of Review", breaks = seq(1990, 2010, 1)) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
-  geom_point() +
-  geom_text(size = 3, hjust = 1, vjust = 2) +
-  geom_smooth() +
-  labs(x = "Year of Review", y = "Average Rating", caption = caption_text)
-```
+# Distribution of all sqft_lot values of houses
+housedata %>% filter(sqft_lot < 100000) %>% 
+   ggplot(aes(sqft_lot)) +
+   geom_histogram(binwidth = 10000, color = I("blue"), fill = "skyblue") +
+   scale_y_continuous(breaks = seq(0, 20000, 1000)) +
+   scale_x_continuous(breaks = seq(0, 100000, 5000), labels = sprintf("%s", seq(0, 10, 0.5))) +
+   labs(x = "sqft_lot (In 1000 sqft)", y = "Count", caption = caption_text) + plot_theme
 
-<!-------------------------------------------------------------------------------------------------------->
-# Creation of training and test datasets
+# Distribution of number of houses based on the following column values - 
+# 'floors', 'waterfront', 'view', 'condition', 'grade'
+grp_col_names <- c('floors', 'waterfront', 'view', 'condition', 'grade')
+lapply(grp_col_names, function(c) {
+   res <- housedata %>% group_by(.dots = c) %>%  
+      summarise('Count' = n(), Percentage = n() * 100 / nrow(housedata)) %>%
+      arrange(desc(Percentage))
+   res %>% ggplot(aes_string(x=c, y='Count')) + 
+      geom_bar(stat = "identity", color = I("white"), fill = "skyblue") +
+      geom_text(aes_string(label='Count'), position=position_dodge(width=0.75), vjust=-0.3) +
+      labs(x = c, y = "Count", caption = caption_text) + plot_theme
+})
 
-The edx dataset is divided into a training set and test set to develop and test different models. 90% of the data as the training set is used to train the models and these models are tested on the remaining 10% of the test dataset. The model with the best prediction (lowest RMSE) on the test set is used as final model to predict ratings for the validation set.
+# Distribution of number of houses based on the following column values - 'yr_built', 'yr_renovated'
+grp_col_names_yr <- c('yr_built', 'yr_renovated')
+lapply(grp_col_names_yr, function(c) {
+   res <- housedata %>% group_by(.dots = c) %>%  
+      summarise('Count' = n(), Percentage = n() * 100 / nrow(housedata)) %>%
+      arrange(desc(Percentage)) %>% top_n(10)
+   res
+})
 
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
-set.seed(27, sample.kind="Rounding")
-test_index <- createDataPartition(y = edx$rating, times = 1, p = 0.1, list = FALSE)
-edx_train <- edx[-test_index,]
-edx_test <- edx[test_index,]
+# Influence of number of bedrooms on the price of house 
+housedata %>% filter(bedrooms < 15) %>% ggplot(aes(x=bedrooms, y=price, group=bedrooms)) +
+   geom_boxplot() +
+   scale_x_continuous(breaks = seq(0, 15, 1)) +
+   scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
+   labs(x = "No of Bedrooms", y = "Price of House ($)", caption = caption_text) + plot_theme
 
-# Keep only those rows in edx_test and validation set which have 
-# movieId and userId existing in edx_train dataset
-edx_test <- edx_test %>% 
-            semi_join(edx_train, by = "movieId") %>%
-            semi_join(edx_train, by = "userId")
+# Influence of number of bathrooms on the price of house 
+housedata %>% ggplot(aes(x=bathrooms, y=price, group=bathrooms)) +
+   geom_boxplot() +
+   scale_x_continuous(breaks = seq(0, 15, 1)) +
+   scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
+   labs(x = "No of Bathrooms", y = "Price of House ($)", caption = caption_text) + plot_theme
 
-validation <- validation %>% 
-              semi_join(edx_train, by = "movieId") %>%
-              semi_join(edx_train, by = "userId")
+# Influence of number of sqft_living on the price of house 
+housedata %>% filter(sqft_living < 7500) %>% ggplot(aes(x=sqft_living, y=price, group=sqft_living)) +
+   geom_boxplot() +
+   scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
+   labs(x = "sqft_living", y = "Price of House ($)", caption = caption_text) + plot_theme
 
-```
+# Influence of number of sqft_lot on the price of house 
+housedata %>% ggplot(aes(x=sqft_lot, y=price, group=sqft_lot)) +
+   geom_boxplot() +
+   scale_x_continuous(breaks = seq(0, 15, 1)) +
+   scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
+   labs(x = "sqft_lot", y = "Price of House ($)", caption = caption_text) + plot_theme
 
-**Training Set: edx_train**
-```{r, echo=FALSE}
-str(edx_train)
-```
+# Influence of number of floors on the price of house 
+housedata %>% ggplot(aes(x=floors, y=price, group=floors)) +
+   geom_boxplot() +
+   scale_x_continuous(breaks = seq(0, 15, 1)) +
+   scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
+   labs(x = "floors", y = "Price of House ($)", caption = caption_text) + plot_theme
 
-**Test Set: edx_test**
-```{r, echo=FALSE}
-str(edx_test)
-```
+# Influence of number of waterfront on the price of house 
+housedata %>% ggplot(aes(x=waterfront, y=price, group=waterfront)) +
+   geom_boxplot() +
+   scale_x_continuous(breaks = seq(0, 15, 1)) +
+   scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
+   labs(x = "waterfront", y = "Price of House ($)", caption = caption_text) + plot_theme
 
-**RMSE function that will be used for all the different models**
+# Influence of view on the price of house 
+housedata %>% ggplot(aes(x=view, y=price, group=view)) +
+   geom_boxplot() +
+   scale_x_continuous(breaks = seq(0, 15, 1)) +
+   scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
+   labs(x = "view", y = "Price of House ($)", caption = caption_text) + plot_theme
 
-By definition, 
-$$\mbox{RMSE} = \sqrt{\frac{1}{n}\sum_{t=1}^{n}(actualData - predictedData)^2}$$
+# Influence of condition on the price of house 
+housedata %>% ggplot(aes(x=condition, y=price, group=condition)) +
+   geom_boxplot() +
+   scale_x_continuous(breaks = seq(0, 15, 1)) +
+   scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
+   labs(x = "condition", y = "Price of House ($)", caption = caption_text) + plot_theme
 
-R function defined as -
-```{r, echo=TRUE}
-RMSE <- function(actual_data, predicted_data){
-  sqrt(mean((actual_data - predicted_data)^2))
-}
-```
+# Influence of grade on the price of house 
+housedata %>% ggplot(aes(x=grade, y=price, group=grade)) +
+   geom_boxplot() +
+   scale_x_continuous(breaks = seq(0, 15, 1)) +
+   scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
+   labs(x = "grade", y = "Price of House ($)", caption = caption_text) + plot_theme
 
-# Development of different models and their performance
+# Study sqft_living vs. sqft_living15
+cor(housedata$sqft_living, housedata$sqft_living15)
+housedata %>%
+   ggplot(aes(x = sqft_living, y = sqft_living15)) +
+   geom_point(color = "blue", alpha=0.25) +
+   stat_smooth() +
+   theme_bw()
 
-## Model 1.0: Simple mean of training set
+# Study sqft_lot vs. sqft_lot15
+cor(housedata$sqft_lot, housedata$sqft_lot15)
+housedata %>%
+   ggplot(aes(x = sqft_lot15, y = sqft_lot)) +
+   geom_point(color = "blue", alpha=0.5) +
+   stat_smooth() +
+   theme_bw()
 
-```{r, echo=TRUE}
-# Get the mean rating as prediction value
-mu <- mean(edx_train$rating)
-# Get the RMSE for test set using mu as prediction value
-rmse_model1 <- RMSE(edx_test$rating, mu)
-```
+# ========================================================================================
+# Analyze and train different models to predict house price
+# ========================================================================================
 
-```{r, echo=FALSE, warning=FALSE}
-rmse_table <- data_frame(method = "Model 1.0: Simple mean of training set", RMSE = rmse_model1)
-rmse_table %>% knitr::kable(caption = "Simple Mean based Model")
-```
+# Report the outliers as observed from data visualization
+housedata %>% filter(sqft_living < 7500) %>% summarise(n = n(), percent = n / nrow(housedata))
+housedata %>% filter(bedrooms < 15) %>% summarise(n = n(), percent = n / nrow(housedata)) 
 
-## Model 2.x:  Models with single effects
+# Drop the columns not required for training
+housedata <- housedata %>% select(-id, -date, -sqft_living15, -sqft_lot15)
 
-### Model 2.1:  Mean with movie effect
-```{r, echo=TRUE}
-#Train on the edx training set to find movie effect
-movie_effects     <-  edx_train %>% 
-                      group_by(movieId) %>% 
-                      summarize(b_m = mean(rating - mu))
+# Cut the continuous data values for the different areas in sqft
+housedata <- housedata %>% filter(sqft_living < 7500 && bedrooms < 15) %>% 
+   mutate(sqft_living = as.numeric(cut(sqft_living, 100)), sqft_lot = as.numeric(cut(sqft_lot, 1000)),
+          sqft_above = as.numeric(cut(sqft_above, 100)), sqft_basement = as.numeric(cut(sqft_basement, 100)),
+          lat = as.numeric(cut(lat, 1000)), long = as.numeric(cut(long, 100)))
 
-#Generate predictions on the edx test set
-predicted_ratings <-  mu + (edx_test %>% 
-                              left_join(movie_effects, by='movieId') %>%
-                              .$b_m)
+# Convert necessary columns into factors
+col_names_for_factor <- c('bedrooms' ,'bathrooms', "floors", "waterfront", "view", "condition", "grade", "zipcode")
+housedata[,col_names_for_factor] <- lapply(housedata[,col_names_for_factor] , factor)
 
-#Find RMSE for this model
-rmse_model_b_m <- RMSE(edx_test$rating, predicted_ratings)
-```
+# Convert necessary columns into factors
+str(housedata)
 
-\newpage
+# Divide dataset into training and validation dataset
+test_index <- createDataPartition(y = housedata$price, times = 1, p = 0.1, list = FALSE)
+hdata_train <- housedata[-test_index,]
+hdata_validation <- housedata[test_index,]
 
-## Model 3.x:  Study of models involving two effects in different forms
+# Train for the following models
+models <- c("lm", "glm", "gbm", "knn", "gamLoess")
+fits <- lapply(models, function(model) { 
+   print(model)
+   train(price ~ ., method = model, data = hdata_train)
+}) 
 
-### Model 3.1:  Mean with movie and user effect taken independently
-```{r, echo=TRUE}
-# Combine Model 2.1 & Model 2.2
-# Generate predictions on the edx test set
-predicted_ratings <-  edx_test %>% 
-                      left_join(movie_effects, by='movieId') %>%
-                      left_join(user_effects, by='userId') %>%
-                      mutate(pred = mu + b_m + b_u) %>%
-                      .$pred
+# Predict values on the validation set
+pred <- sapply(fits, function(object) predict(object, newdata = validation))
 
-# Find RMSE for this model
-rmse_model_3_1 <- RMSE(edx_test$rating, predicted_ratings)
-```
+# Define and find the RMSE values for the results
+RMSE <- function (x, test) sqrt(mean((x-test$price)^2))
+res <- lapply(pred, FUN = RMSE, hdata_validation)
 
-```{r, echo=FALSE}
-# Add the new RMSE to the RMSE Table
-captionTableType2 <- "RMSE Values for 3.x Model series"
-rmse_table <- bind_rows(rmse_table,
-                        data_frame(method="Model 3.1: Mean + Movie + User Effect",
-                                   RMSE = rmse_model_3_1 ))
-rmse_table %>% knitr::kable(caption = captionTableType2)
-```
+# Comparison with a naive model of predicting value with mean
+mu <- mean(housedata$price)
+   
 
-## Model 4.x: Towards the model involving all the effects
-
-### Model 4.1:  Model of movie, user, genre effects in respective order
-```{r, echo=TRUE}
-
-```
-
-```{r, echo=FALSE}
-
-```
-
-## Model 5.0: Effects of Regularization on the model
-
-Regularization is a form of regression, that constrains/ regularizes or shrinks the coefficient estimates towards zero. In other words, this technique discourages learning a more complex or flexible model, so as to avoid the risk of overfitting. Thus, to avoid overfit we will apply regularization and study its influence on the RMSE.
-
-### Define function to find RMSE for given lambda on a predefined model
-
-Regularization process involves finding out an optimal lambda to tune the model. A common function is defined to find the RMSE for particular lambda on Model 3.2.
-```{r, echo=TRUE}
-
-```
-
-### Finding the optimal value of lambda
-```{r, echo=TRUE, eval=TRUE}
-# Towards optimal lambda - Step 1
-lambdas <- seq(0, 100, 10)
-rmses <- sapply(lambdas, function(l) {  find_rmse_for_lambda(l) })
-qplot(x = lambdas, y = rmses, main = "Plot 1: Finding optimal lamda", 
-      xlab = "Lamda", ylab = "RMSE", geom = c("point", "line"))
-```
-*Observation*: The optimal lambda seems to lie in the range of (0,10).
-
-```{r, echo=TRUE, eval=TRUE}
-# Towards optimal lambda - Step 2
-lambdas <- seq(0, 10, 1)
-rmses <- sapply(lambdas, function(l) {  find_rmse_for_lambda(l) })
-qplot(x = lambdas, y = rmses, main = "Plot 2: Finding optimal lamda", 
-      xlab = "Lamda", ylab = "RMSE", geom = c("point", "line"))
-```
-*Observation*: The optimal lambda lies between 4 and 6. Next, we'll find RMSE for models with lambda between 4 & 6 in steps of 0.1. The lambda with minimum RMSE is the optimal lambda for the above model.
-
-```{r, echo=TRUE, eval=TRUE}
-# Towards optimal lambda - Step 3
-lambdas <- seq(4, 6, 0.1)
-rmses <- sapply(lambdas, function(l) {  find_rmse_for_lambda(l) })
-qplot(x = lambdas, y = rmses, main = "Plot 3: Finding optimal lamda", 
-      xlab = "Lamda", ylab = "RMSE", geom = c("point", "line"))
-```
-
-```{r, echo=FALSE, eval=TRUE, message=FALSE}
-# Print optimal lamda and corresponding rmse
-lambdas[which.min(rmses)]
-min_rmse <- min(rmses)
-```
-
-*Observation*: The optimal lambda is `r lambdas[which.min(rmses)]` that gives an RMSE of `r, min_rmse`.
-
-```{r, echo=FALSE, eval=TRUE}
-#Add the new RMSE to the RMSE Table
-rmse_table <- bind_rows(rmse_table,
-                        data_frame(method="Model 5.0: Mean + Regularized Movie + Cum. User Effect",
-                                   RMSE = min_rmse))
-rmse_table %>% knitr::kable(caption = "RMSE Values for All Models")
-```
-*Observation*: As observed in the regularized model, the RMSE value is `r min_rmse` against a non-regularized model that had an RMSE of `r rmse_model_3_2`. Therefore, we will use regularization along with all the features to train our final model.
-
-## Model 6.0: Model with all features and regularization
-```{r, echo=TRUE, eval=TRUE}
-# Regularise model, predict ratings and calculate RMSE for passed value of lambda
-
-```
-
-# RMSE on validation set with final chosen model
-
-```{r, echo=FALSE, eval=TRUE}
-
-```
-
-```{r, echo=TRUE, eval=TRUE}
-
-
-```
 
 <!-------------------------------------------------------------------------------------------------------->
 # Conclusions
@@ -347,6 +281,8 @@ The MovieRecommenderModel developed predicts values on the validation set with a
 [2] http://www.sthda.com/english/wiki/qplot-quick-plot-with-ggplot2-r-software-and-data-visualization \
 [3] https://bookdown.org/yihui/rmarkdown-cookbook/kable.html \
 [4] https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet \
+[5] https://www.kaggle.com
+[6] https://en.wikipedia.org/wiki/Kaggle
 
 \newpage
 <!-------------------------------------------------------------------------------------------------------->

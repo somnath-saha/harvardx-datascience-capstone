@@ -25,10 +25,15 @@
 # sqft_living15: Square foot Living in 2015
 # sqft_lot15: Square foot Lot in 2015
 
+# ========================================================================================
+# Install and load required libraries
+# ========================================================================================
+
 if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
 if(!require(xgboost)) install.packages("xgboost", repos = "http://cran.us.r-project.org")
 if(!require(Deriv)) install.packages("Deriv", repos = "http://cran.us.r-project.org")
 if(!require(neuralnet)) install.packages("neuralnet", repos = "http://cran.us.r-project.org")
+if(!require(gbm)) install.packages("neuralnet", repos = "http://cran.us.r-project.org")
 
 library(caret)
 library(dslabs)
@@ -36,9 +41,14 @@ library(Deriv)
 library(neuralnet)
 library(xgboost)
 library(tidyverse)
+library(gbm)
 
-#Read data from CSV file
+# Read data from CSV file
 housedata <- read.csv("cyo-housesale-project/kc_house_data.csv", as.is = TRUE)
+
+# ========================================================================================
+# DATA INSIGHTS
+# ========================================================================================
 
 # Find number of unique values in every column
 colNames <- colnames(housedata)
@@ -46,59 +56,18 @@ sapply(colNames, function(c) {
    n <- n_distinct(housedata[[c]])
 }, simplify="array")
 
-
-
-# Create scatterplot of all the house price columns vs price
-housedata2 <- housedata %>% top_n(5000)
-
-housedata2 %>%
-   gather(-price, key = "var", value = "value") %>%
-   ggplot(aes(x = value, y = price)) +
-   geom_point() +
-   stat_smooth() +
-   facet_wrap(~ var, scales = "free") +
-   theme_bw()
-
-# Convert theme and caption to be used for plots
+# Theme and caption to be used for plots
 plot_theme <- theme(plot.caption = element_text(size = 7, face = "italic"), 
                     axis.title = element_text(size = 11))
 caption_text <- "PH125.9x | Source: Kaggle KC House Data | Somnath Saha"
 
-housedata %>% ggplot(aes(price)) +
-   geom_histogram(binwidth = 1000000, color = I("white"), fill = "lightblue") +
-   #scale_y_continuous(breaks = seq(0, 4500, 500)) +
-   #scale_x_continuous(breaks = seq(0, 1500000, 100000), labels = sprintf("%sK", seq(0, 1500, 100))) +
-   labs(x = "Price Range ($)", y = "count", caption = caption_text) 
-
-
-
-
-housedataplot <- housedata %>% select(-id, -date, -zipcode)
-
-#housedata %>% group_by(price > 1500000) %>% summarise(n = n())
-
-housedataplot %>%
+# Create scatterplot of all the features vs price
+housedata %>%
    gather(-price, key = "var", value = "value") %>%
    ggplot(aes(x = value, y = price)) +
-   geom_point() +
+   geom_point(color = "blue", alpha=0.25) +
    stat_smooth() +
    facet_wrap(~ var, scales = "free") +
-   theme_bw()
-
-
-cor(housedata$sqft_living, housedata$sqft_living15)
-cor(housedata$sqft_lot, housedata$sqft_lot15)
-
-housedata %>%
-   ggplot(aes(x = sqft_living, y = sqft_living15)) +
-   geom_point(color = "blue", alpha=0.5) +
-   stat_smooth() +
-   theme_bw()
-
-housedata %>%
-   ggplot(aes(x = sqft_lot15, y = sqft_lot)) +
-   geom_point(color = "blue", alpha=0.5) +
-   stat_smooth() +
    theme_bw()
 
 # Distribution of all the different price of houses (Upto 8M)
@@ -110,7 +79,7 @@ housedata %>% ggplot(aes(price)) +
 
 # Distribution of the house prices within 1.5M 
 housedata %>% filter(price < 1000000) %>% ggplot(aes(price)) +
-   geom_histogram(binwidth = 100000, color = I("white"), fill = "lightblue") +
+   geom_histogram(binwidth = 100000, color = I("blue"), fill = "skyblue") +
    scale_y_continuous(breaks = seq(0, 4500, 500)) +
    scale_x_continuous(breaks = seq(0, 1500000, 100000), labels = sprintf("%sK", seq(0, 1500, 100))) +
    labs(x = "Price Range ($)", y = "Number of Houses", caption = caption_text) + plot_theme
@@ -118,7 +87,6 @@ housedata %>% filter(price < 1000000) %>% ggplot(aes(price)) +
 # Distribution of all sqft_living values of houses
 housedata %>% filter(sqft_living < 10000) %>% ggplot(aes(sqft_living)) +
    geom_histogram(binwidth = 1000, color = I("blue"), fill = "skyblue") +
-   #scale_y_continuous(breaks = seq(0, 4500, 500)) +
    scale_x_continuous(breaks = seq(0, 10000, 1000), labels = seq(0, 10000, 1000)) +
    labs(x = "Living Room Size", y = "Count", caption = caption_text) + plot_theme
 
@@ -143,8 +111,7 @@ lapply(grp_col_names, function(c) {
       labs(x = c, y = "Count", caption = caption_text) + plot_theme
 })
 
-# Distribution of number of houses based on the following column values - 
-# 'yr_built', 'yr_renovated'
+# Distribution of number of houses based on the following column values - 'yr_built', 'yr_renovated'
 grp_col_names_yr <- c('yr_built', 'yr_renovated')
 lapply(grp_col_names_yr, function(c) {
    res <- housedata %>% group_by(.dots = c) %>%  
@@ -167,12 +134,9 @@ housedata %>% ggplot(aes(x=bathrooms, y=price, group=bathrooms)) +
    scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
    labs(x = "No of Bathrooms", y = "Price of House ($)", caption = caption_text) + plot_theme
 
-
-
 # Influence of number of sqft_living on the price of house 
-housedata2 %>% filter(sqft_living < 7500) %>% ggplot(aes(x=sqft_living_grp, y=price, group=sqft_living_grp)) +
+housedata %>% filter(sqft_living < 7500) %>% ggplot(aes(x=sqft_living, y=price, group=sqft_living)) +
    geom_boxplot() +
-   #scale_x_continuous(breaks = seq(0, 7500, 500)) +
    scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
    labs(x = "sqft_living", y = "Price of House ($)", caption = caption_text) + plot_theme
 
@@ -181,193 +145,120 @@ housedata %>% ggplot(aes(x=sqft_lot, y=price, group=sqft_lot)) +
    geom_boxplot() +
    scale_x_continuous(breaks = seq(0, 15, 1)) +
    scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
-   labs(x = "No of Bedrooms", y = "Price of House ($)", caption = caption_text) + plot_theme
+   labs(x = "sqft_lot", y = "Price of House ($)", caption = caption_text) + plot_theme
 
+# Influence of number of floors on the price of house 
+housedata %>% ggplot(aes(x=floors, y=price, group=floors)) +
+   geom_boxplot() +
+   scale_x_continuous(breaks = seq(0, 15, 1)) +
+   scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
+   labs(x = "floors", y = "Price of House ($)", caption = caption_text) + plot_theme
 
+# Influence of number of waterfront on the price of house 
+housedata %>% ggplot(aes(x=waterfront, y=price, group=waterfront)) +
+   geom_boxplot() +
+   scale_x_continuous(breaks = seq(0, 15, 1)) +
+   scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
+   labs(x = "waterfront", y = "Price of House ($)", caption = caption_text) + plot_theme
 
-housedata2 %>% ggplot(aes(x = sqft_living_grp, y = price)) + geom_point()
+# Influence of view on the price of house 
+housedata %>% ggplot(aes(x=view, y=price, group=view)) +
+   geom_boxplot() +
+   scale_x_continuous(breaks = seq(0, 15, 1)) +
+   scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
+   labs(x = "view", y = "Price of House ($)", caption = caption_text) + plot_theme
 
-#Predicting values of price based on other available parameters
-#models <- c("glm", "lda", "naive_bayes", "svmLinear", "knn", "gamLoess", "multinom", "qda", "rf", "adaboost")
-#lm, svmLinear
+# Influence of condition on the price of house 
+housedata %>% ggplot(aes(x=condition, y=price, group=condition)) +
+   geom_boxplot() +
+   scale_x_continuous(breaks = seq(0, 15, 1)) +
+   scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
+   labs(x = "condition", y = "Price of House ($)", caption = caption_text) + plot_theme
 
-hdata_backup <- housedata
-housedata <- hdata_backup
+# Influence of grade on the price of house 
+housedata %>% ggplot(aes(x=grade, y=price, group=grade)) +
+   geom_boxplot() +
+   scale_x_continuous(breaks = seq(0, 15, 1)) +
+   scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
+   labs(x = "grade", y = "Price of House ($)", caption = caption_text) + plot_theme
 
-#Clean up data and remove outliers
+# Study sqft_living vs. sqft_living15
+cor(housedata$sqft_living, housedata$sqft_living15)
+housedata %>%
+   ggplot(aes(x = sqft_living, y = sqft_living15)) +
+   geom_point(color = "blue", alpha=0.25) +
+   stat_smooth() +
+   theme_bw()
+
+# Study sqft_lot vs. sqft_lot15
+cor(housedata$sqft_lot, housedata$sqft_lot15)
+housedata %>%
+   ggplot(aes(x = sqft_lot15, y = sqft_lot)) +
+   geom_point(color = "blue", alpha=0.5) +
+   stat_smooth() +
+   theme_bw()
+
+# ========================================================================================
+# Analyze and train different models to predict house price
+# ========================================================================================
+
+# Report the outliers as observed from data visualization
 housedata %>% filter(sqft_living < 7500) %>% summarise(n = n(), percent = n / nrow(housedata))
-housedata %>% summarise(n = n())
-housedata %>% filter(bedrooms < 15) %>% summarise(n = n())
-housedata %>% summarise(n = n())
-housedata %>% distinct_n(n = n())
+housedata %>% filter(bedrooms < 15) %>% summarise(n = n(), percent = n / nrow(housedata)) 
+
+# Drop the columns not required for training
+housedata <- housedata %>% select(-id, -date, -sqft_living15, -sqft_lot15)
 
 # Cut the continuous data values for the different areas in sqft
 housedata <- housedata %>% filter(sqft_living < 7500 && bedrooms < 15) %>% 
    mutate(sqft_living = as.numeric(cut(sqft_living, 100)), sqft_lot = as.numeric(cut(sqft_lot, 1000)),
-          sqft_living15 = as.numeric(cut(sqft_living15, 100)), sqft_lot15 = as.numeric(cut(sqft_lot15, 1000)),
           sqft_above = as.numeric(cut(sqft_above, 100)), sqft_basement = as.numeric(cut(sqft_basement, 100)),
           lat = as.numeric(cut(lat, 1000)), long = as.numeric(cut(long, 100)))
 
-# Convert apt columns into factors
+# Convert necessary columns into factors
 col_names_for_factor <- c('bedrooms' ,'bathrooms', "floors", "waterfront", "view", "condition", "grade", "zipcode")
 housedata[,col_names_for_factor] <- lapply(housedata[,col_names_for_factor] , factor)
+
+# Convert necessary columns into factors
 str(housedata)
 
+# Divide dataset into training and validation dataset
+test_index <- createDataPartition(y = housedata$price, times = 1, p = 0.1, list = FALSE)
+hdata_train <- housedata[-test_index,]
+hdata_validation <- housedata[test_index,]
 
-hdata <- housedata %>% select(-id, -date, -sqft_living15, -sqft_lot15)
-test_index <- createDataPartition(y = hdata$price, times = 1, p = 0.1, list = FALSE)
-hdata_train <- hdata[-test_index,]
-hdata_validation <- hdata[test_index,]
-
-test_index <- createDataPartition(y = hdataTemp$price, times = 1, p = 0.1, list = FALSE)
-hdata_train <- hdataTemp[-test_index,]
-hdata_test <- hdataTemp[test_index,]
-
-# rm(hdata, hdataTemp)
-# hdata_train <- hdata_train %>% select(price, bedrooms, bathrooms, sqft_living, sqft_basement, sqft_above)
-# hdata_test <- hdata_test %>% select(price, bedrooms, bathrooms, sqft_living, sqft_basement, sqft_above)
-# validation <- validation %>% select(price, bedrooms, bathrooms, sqft_living, sqft_basement, sqft_above)
-
-models <- c("lm", "glm", "gbm", "svmLinear", "knn", "gamLoess", "rf")
-fits <- lapply(models, function(model){ 
+# Train for the following models
+models <- c("lm", "glm", "gbm", "knn", "gamLoess")
+fits <- lapply(models, function(model) { 
    print(model)
    train(price ~ ., method = model, data = hdata_train)
 }) 
+
+# Predict values on the validation set
 pred <- sapply(fits, function(object) predict(object, newdata = validation))
+
+# Define and find the RMSE values for the results
 RMSE <- function (x, test) sqrt(mean((x-test$price)^2))
-x <- lapply(pred, FUN = RMSE, hdata_validation)
+res <- lapply(pred, FUN = RMSE, hdata_validation)
 
-# acc <- colMeans(pred == validation$price)
-# RMSE(pred, validation$price)
-# acc
-
-models2 <- c("xgbDART", "xgbLinear", "xgbTree", "elm", "neuralnet", "nnet", "pcaNNet")
-fits2 <- lapply(models2, function(model){ 
-   print(model)
-   train(price ~ ., method = model, data = hdata_train)
-}) 
-pred <- sapply(fits, function(object) predict(object, newdata = validation))
-RMSE <- function (x, test) sqrt(mean((x-test$price)^2))
-x <- lapply(pred, FUN = RMSE, validation)
-
-new_df <- as.data.frame(unlist(lapply(pred, FUN = RMSE, validation)), col.names=c("c","d"))
-
-fit1 <- train(price ~ ., method = "lm", data = hdata_train)
-fit1 <- train(price ~ ., method = "glm", data = hdata_train)
-fit1 <- train(price ~ ., method = "gbm", data = hdata_train)
-fit1 <- train(price ~ ., method = "knn", data = hdata_train)
-fit1 <- train(price ~ ., method = "gamLoess", data = hdata_train)
-fit1 <- train(price ~ ., method = "rf", data = hdata_train)
-fit1 <- train(price ~ ., method = "svmLinear", data = hdata_train)
-
-fit1 <- train(price ~ ., method = "xgbDART", data = hdata_train)
-fit1 <- train(price ~ ., method = "xgbLinear", data = hdata_train)
-fit1 <- train(price ~ ., method = "xgbTree", data = hdata_train)
-fit1 <- train(price ~ ., method = "elm", data = hdata_train)
-fit1 <- train(price ~ ., method = "neuralnet", data = hdata_train)
-fit1 <- train(price ~ ., method = "nnet", data = hdata_train)
-fit1 <- train(price ~ ., method = "pcaNNet", data = hdata_train)
-
-
-pred1 <- predict(fit1, newdata = validation)
-RMSE(pred1, validation$price)
-acc1
-
-df <- data.frame(pred1, validation$price)
-
-names(fits) <- models
-pred <- sapply(fits, function(object) predict(object, newdata = validation))
-
-dim(pred)
-
-acc <- colMeans(pred == mnist_27$test$y)
-acc
-mean(acc)
-
-c <- 1
-
-# price, bedrooms, bathrooms, sqft_living, sqft_basement, sqft_above
-# floors, waterfront, view, condition, grade, bedrooms, bathrooms
-
-## Model 6.0: Model with all features and regularization
-#```{r, echo=TRUE, eval=TRUE}
-# Regularise model, predict ratings and calculate RMSE for passed value of lambda
-mu <- mean(hdata_train$price)
-var1 <- "floors"
-var2 <- "waterfront"
-var3 <- "bedrooms"
-var4 <- "bathrooms"
-var5 <- "condition"
-var6 <- "grade"
-
-hdata_train <- hdata_train %>% select(price, floors, waterfront, bedrooms, bathrooms, condition)
-hdata_test <- hdata_test %>% select(price, floors, waterfront, bedrooms, bathrooms, condition)
-validation <- validation %>% select(price, floors, waterfront, bedrooms, bathrooms, condition)
-
-train_predict_get_rmse <- function(l, trainSet, testSet)
-{
-   b_m   <- hdata_train %>%
-      group_by(floors) %>%
-      summarise(b_m = sum(price - mu)/(n()+l))
-   b_u   <- hdata_train %>%
-      left_join(b_m, by=var1) %>%
-      group_by(waterfront) %>%
-      summarise(b_u = sum(price - b_m - mu)/(n()+l))
-   b_g   <-        hdata_train %>%
-      left_join(b_m, by=var1) %>%
-      left_join(b_u, by=var2) %>%
-      group_by(bedrooms) %>%
-      summarise(b_g = sum(price - b_m - b_u - mu)/(n()+l))
-   b_yr_release <- hdata_train %>%
-      left_join(b_m, by=var1) %>%
-      left_join(b_u, by=var2) %>%
-      left_join(b_g, by=var3) %>%
-      group_by(bathrooms) %>%
-      summarise(b_yr_release = sum(price - b_m - b_u - b_g - mu)/(n()+l))
-   b_yr_review <-  hdata_train %>%
-      left_join(b_m, by=var1) %>%
-      left_join(b_u, by=var2) %>%
-      left_join(b_g, by=var3) %>%
-      left_join(b_yr_release, by=var4) %>%
-      group_by(condition) %>%
-      summarise(b_yr_review = sum(price - b_m - b_u - b_g - mu)/(n()+l))
+# Comparison with a naive model of predicting value with mean
+mu <- mean(housedata$price)
    
-   predicted_ratings <-  hdata_test %>%
-      left_join(b_m, by=var1) %>%
-      left_join(b_u, by=var2) %>%
-      left_join(b_g, by=var3) %>%
-      left_join(b_yr_release, by=var4) %>%
-      left_join(b_yr_review, by=var5) %>%
-      mutate(pred = mu + b_m + b_u + b_g + b_yr_release + b_yr_review) %>%
-      pull(pred)
    
-   return (RMSE(predicted_ratings, hdata_test$price))
-}
-# Generate a sequence of values for lambda ranging from 4 to 6 with 0.1 increments
-inc <- 100
-lambdas <- seq(1, 10000, inc)
-
-x <- train_predict_get_rmse(10, hdata_train, hdata_test)
-
-# Get RMSE values for all the lambdas
-rmses <- sapply(lambdas, function(l) {  train_predict_get_rmse(l, hdata_train, hdata_test) })
-qplot(lambdas, rmses)
-
-# Assign optimal tuning parameter (lambda)
-optimal_lambda <- lambdas[which.min(rmses)]
-
-# Minimum RMSE achieved
-regularised_rmse <- min(rmses) 
-
-#Reference :
-#   https://www.tutorialspoint.com/r/r_boxplots.htm
+# #Advanced models to be executed on more powerful machines
+# models2 <- c("svmLinear", "rf", "xgbDART", "xgbLinear", "xgbTree", "elm", "neuralnet", "nnet", "pcaNNet")
+# fits2 <- lapply(models2, function(model){ 
+#    print(model)
+#    train(price ~ ., method = model, data = hdata_train)
+# }) 
+# pred <- sapply(fits, function(object) predict(object, newdata = validation))
+# RMSE <- function (x, test) sqrt(mean((x-test$price)^2))
+# adv_res <- lapply(pred, FUN = RMSE, validation)
 
 
 
 
-
-
-
-
-
-
+# References :
+# https://en.wikipedia.org/wiki/Kaggle
+# https://www.kaggle.com
+# https://www.tutorialspoint.com/r/r_boxplots.htm
