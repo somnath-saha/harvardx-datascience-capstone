@@ -29,15 +29,18 @@
 # Install and load required libraries
 # ========================================================================================
 
+if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
 if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
-if(!require(Deriv)) install.packages("Deriv", repos = "http://cran.us.r-project.org")
-if(!require(gbm)) install.packages("neuralnet", repos = "http://cran.us.r-project.org")
+if(!require(data.table)) install.packages("data.table", repos = "http://cran.us.r-project.org")
+if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-project.org")
 
 library(caret)
 library(dslabs)
-library(Deriv)
+library(lubridate)
+library(dplyr)
 library(tidyverse)
-library(gbm)
+library(tidyr)
+library(ggplot2)
 
 # Read data from CSV file
 housedata <- read.csv("cyo-housesale-project/kc_house_data.csv", as.is = TRUE)

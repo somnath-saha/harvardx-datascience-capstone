@@ -18,17 +18,21 @@ knitr::opts_chunk$set(echo = TRUE)
 \newpage
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 #Install and load required packages
+if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
 if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
-if(!require(Deriv)) install.packages("Deriv", repos = "http://cran.us.r-project.org")
+if(!require(data.table)) install.packages("data.table", repos = "http://cran.us.r-project.org")
+if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-project.org")
 
 library(caret)
 library(dslabs)
-library(Deriv)
+library(lubridate)
+library(dplyr)
 library(tidyverse)
+library(tidyr)
+library(ggplot2)
 
 # Read data from CSV file
 housedata <- read.csv("kc_house_data.csv", as.is = TRUE)
-# housedata <- read.csv("../tempdata.csv", as.is = TRUE)
 ```
 <!-------------------------------------------------------------------------------------------------------->
 # Overview
@@ -346,7 +350,6 @@ The following models are developed which are quick to train for the given datase
 ```{r, echo=FALSE, warning=FALSE, include=FALSE}
 models <- c("lm", "glm", "gbm", "gamLoess")
 fits <- lapply(models, function(model) { 
-   print(model)
    train(price ~ ., method = model, data = hdata_train)
 }) 
 ```
@@ -378,24 +381,26 @@ improvement_percentage
 ```
 Improvement Percentage over mean value model is `r improvement_percentage`.
 
-## Final RMSE values for all models
+## Results: Final RMSE values for all models
 ```{r, echo=FALSE}
 res %>% knitr::kable(caption = "RMSE Values for all Models")
 ```
 
 # Conclusion
-As observed in the final RMSE values, an improvement of `r improvement_percentage` is attained on training with **Stochastic Gradient Boosting** algorithm. There are many more powerful algorithms available as well which can be used to achieve better results. Such algorithms generally require a lot of computing power and time. With proper tuning, all algorithms can be improved to attain better results.
+A good insight into the data has been achieved specially through visualization. It helps to understand the real effects of different parameters on house prices. \
+Some prediction models were also developed for house prices. Among the different prediction models, the model based on **Stochastic Gradient Boosting** algorithm had the best performance and an improvement of `r improvement_percentage`% relative to the naive mean value based prediction model for house prices. This is definitely not the best model that can be developed for the given data. There are a huge number of more powerful algorithms available directly through the caret package (neuralnet, xgb, pcaNNet etc.) which can be tried on the given dataset. Better results require many iterations over different tuning parameters on powerful machines and run for significant period of time. However, the report demonstrates the essential techniques to reach a better model and we can develop on it further with more computing power and time.
 
 <!--
-# #Advanced models to be executed on more powerful machines
-# models2 <- c("knn", svmLinear", "rf", "xgbDART", "xgbLinear", "xgbTree", "elm", "neuralnet", "nnet", "pcaNNet")
-# fits2 <- lapply(models2, function(model){ 
-#    print(model)
-#    train(price ~ ., method = model, data = hdata_train)
-# }) 
-# pred <- sapply(fits, function(object) predict(object, newdata = validation))
-# RMSE <- function (x, test) sqrt(mean((x-test$price)^2))
-# adv_res <- lapply(pred, FUN = RMSE, validation)
+```{r, echo=FALSE}
+# Advanced models to be executed on more powerful machines
+models2 <- c("knn", "svmLinear", "rf", "xgbDART", "xgbLinear", "xgbTree", "elm", "neuralnet", "nnet", "pcaNNet")
+
+fits2 <- lapply(models2, function(model){ 
+   train(price ~ ., method = model, data = hdata_train)
+}) 
+pred <- sapply(fits, function(object) predict(object, newdata = hdata_validation))
+adv_res <- as.data.frame(lapply(as.data.frame(pred), FUN = RMSE, hdata_validation$price))
+```
 -->
 
 <!-------------------------------------------------------------------------------------------------------->
