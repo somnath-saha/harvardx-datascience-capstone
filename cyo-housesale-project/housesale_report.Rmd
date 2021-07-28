@@ -30,8 +30,9 @@ library(neuralnet)
 library(xgboost)
 library(tidyverse)
 
-#Read data from CSV file
+# Read data from CSV file
 housedata <- read.csv("kc_house_data.csv", as.is = TRUE)
+# housedata <- read.csv("../tempdata.csv", as.is = TRUE)
 ```
 <!-------------------------------------------------------------------------------------------------------->
 # Overview
@@ -92,6 +93,7 @@ housedata %>%
    facet_wrap(~ var, scales = "free") +
    theme_bw()
 ```
+
 ## Distribution of the column values
 
 ### Distribution of all the different price of houses (Upto 8M)
@@ -102,6 +104,7 @@ housedata %>% ggplot(aes(price)) +
    scale_x_continuous(breaks = seq(0, 8000000, 500000), labels = sprintf("%sM", seq(0, 8, 0.5))) +
    labs(x = "Price Range ($)", y = "Number of Houses", caption = caption_text) + plot_theme
 ```
+
 ### Distribution of the house prices within 1.5M 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 housedata %>% filter(price < 1000000) %>% ggplot(aes(price)) +
@@ -110,6 +113,7 @@ housedata %>% filter(price < 1000000) %>% ggplot(aes(price)) +
    scale_x_continuous(breaks = seq(0, 1500000, 100000), labels = sprintf("%sK", seq(0, 1500, 100))) +
    labs(x = "Price Range ($)", y = "Number of Houses", caption = caption_text) + plot_theme
 ```
+
 ### Distribution of all sqft_living values of houses
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 housedata %>% filter(sqft_living < 10000) %>% ggplot(aes(sqft_living)) +
@@ -117,6 +121,7 @@ housedata %>% filter(sqft_living < 10000) %>% ggplot(aes(sqft_living)) +
    scale_x_continuous(breaks = seq(0, 10000, 1000), labels = seq(0, 10000, 1000)) +
    labs(x = "Living Room Size", y = "Count", caption = caption_text) + plot_theme
 ```
+
 ### Distribution of all sqft_lot values of houses
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 housedata %>% filter(sqft_lot < 100000) %>% 
@@ -126,6 +131,7 @@ housedata %>% filter(sqft_lot < 100000) %>%
    scale_x_continuous(breaks = seq(0, 100000, 5000), labels = sprintf("%s", seq(0, 10, 0.5))) +
    labs(x = "sqft_lot (In 1000 sqft)", y = "Count", caption = caption_text) + plot_theme
 ```
+
 ### Distribution of number of houses based on the following column values - 'floors', 'waterfront', 'view', 'condition', 'grade'
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 grp_col_names <- c('floors', 'waterfront', 'view', 'condition', 'grade')
@@ -139,6 +145,7 @@ lapply(grp_col_names, function(c) {
       labs(x = c, y = "Count", caption = caption_text) + plot_theme
 })
 ```
+
 ### Distribution of number of houses based on the following column values - 'yr_built', 'yr_renovated'
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 grp_col_names_yr <- c('yr_built', 'yr_renovated')
@@ -149,6 +156,7 @@ lapply(grp_col_names_yr, function(c) {
    res
 })
 ```
+
 ## Influence of different features on the price of house 
 
 ### Influence of number of bedrooms on the price of house 
@@ -159,6 +167,7 @@ housedata %>% filter(bedrooms < 15) %>% ggplot(aes(x=bedrooms, y=price, group=be
    scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
    labs(x = "No of Bedrooms", y = "Price of House ($)", caption = caption_text) + plot_theme
 ```
+
 ### Influence of number of bathrooms on the price of house 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 housedata %>% ggplot(aes(x=bathrooms, y=price, group=bathrooms)) +
@@ -167,6 +176,7 @@ housedata %>% ggplot(aes(x=bathrooms, y=price, group=bathrooms)) +
    scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
    labs(x = "No of Bathrooms", y = "Price of House ($)", caption = caption_text) + plot_theme
 ```
+
 ### Influence of number of sqft_living on the price of house 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 housedata %>% filter(sqft_living < 7500) %>% ggplot(aes(x=sqft_living, y=price, group=sqft_living)) +
@@ -174,14 +184,15 @@ housedata %>% filter(sqft_living < 7500) %>% ggplot(aes(x=sqft_living, y=price, 
    scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
    labs(x = "sqft_living", y = "Price of House ($)", caption = caption_text) + plot_theme
 ```
+
 ### Influence of number of sqft_lot on the price of house 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 housedata %>% ggplot(aes(x=sqft_lot, y=price, group=sqft_lot)) +
    geom_boxplot() +
-   scale_x_continuous(breaks = seq(0, 15, 1)) +
    scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
    labs(x = "sqft_lot", y = "Price of House ($)", caption = caption_text) + plot_theme
 ```
+
 ### Influence of number of floors on the price of house 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 housedata %>% ggplot(aes(x=floors, y=price, group=floors)) +
@@ -190,6 +201,7 @@ housedata %>% ggplot(aes(x=floors, y=price, group=floors)) +
    scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
    labs(x = "floors", y = "Price of House ($)", caption = caption_text) + plot_theme
 ```
+
 ### Influence of number of waterfront on the price of house 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 housedata %>% ggplot(aes(x=waterfront, y=price, group=waterfront)) +
@@ -198,6 +210,7 @@ housedata %>% ggplot(aes(x=waterfront, y=price, group=waterfront)) +
    scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
    labs(x = "waterfront", y = "Price of House ($)", caption = caption_text) + plot_theme
 ```
+
 ### Influence of view on the price of house 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 housedata %>% ggplot(aes(x=view, y=price, group=view)) +
@@ -206,6 +219,7 @@ housedata %>% ggplot(aes(x=view, y=price, group=view)) +
    scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
    labs(x = "view", y = "Price of House ($)", caption = caption_text) + plot_theme
 ```
+
 ### Influence of condition on the price of house 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 housedata %>% ggplot(aes(x=condition, y=price, group=condition)) +
@@ -214,6 +228,7 @@ housedata %>% ggplot(aes(x=condition, y=price, group=condition)) +
    scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
    labs(x = "condition", y = "Price of House ($)", caption = caption_text) + plot_theme
 ```
+
 ### Influence of grade on the price of house 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 housedata %>% ggplot(aes(x=grade, y=price, group=grade)) +
@@ -222,11 +237,12 @@ housedata %>% ggplot(aes(x=grade, y=price, group=grade)) +
    scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
    labs(x = "grade", y = "Price of House ($)", caption = caption_text) + plot_theme
 ```
+
 ## Relation between some similar values
 
 ### Study sqft_living vs. sqft_living15
 
-Correlation & Data Plot:
+Correlation Value & Data Plot:
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 cor(housedata$sqft_living, housedata$sqft_living15)
 
@@ -236,9 +252,10 @@ housedata %>%
    stat_smooth() +
    theme_bw()
 ```
+
 ### Study sqft_lot vs. sqft_lot15
 
-Correlation & Data Plot:
+Correlation Value & Data Plot:
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 cor(housedata$sqft_lot, housedata$sqft_lot15)
 
@@ -248,18 +265,20 @@ housedata %>%
    stat_smooth() +
    theme_bw()
 ```
+
 <!-- ========================================================================================-->
+
 # Analyze and train different models to predict house price
-<!-- ========================================================================================-->
 
 ## Filtering away Outliers
 
-As observed from the data visulation, bedrooms and sqft_living data have some significant outliers.
+As observed from the data visulation, bedrooms and sqft_living data have some significant outliers. The house with 33 bedrooms and sqft_living of more than 7500 would be removed as still the data remains close to 100%.
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
-housedata %>% filter(sqft_living < 7500) %>% summarise(n = n(), percent = n / nrow(housedata))
-housedata %>% filter(bedrooms < 15) %>% summarise(n = n(), percent = n / nrow(housedata)) 
+housedata %>% filter(sqft_living < 7500) %>% summarise(n = n(), percent = n * 100.0 / nrow(housedata))
+housedata %>% filter(bedrooms < 15) %>% summarise(n = n(), percent = n * 100.0 / nrow(housedata)) 
 ```
+
 ## Drop the columns not required for training
 
 As observed from data visualization, some less significant columns would be discarded.
@@ -268,16 +287,21 @@ As observed from data visualization, some less significant columns would be disc
 housedata <- housedata %>% select(-id, -date, -sqft_living15, -sqft_lot15)
 str(housedata)
 ```
+
 ## Cut the continuous data values for the different areas in sqft
 
 The continuous data would be cut into intervals so that training is simple and quick.
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
 housedata <- housedata %>% filter(sqft_living < 7500 && bedrooms < 15) %>% 
-   mutate(sqft_living = as.numeric(cut(sqft_living, 100)), sqft_lot = as.numeric(cut(sqft_lot, 1000)),
-          sqft_above = as.numeric(cut(sqft_above, 100)), sqft_basement = as.numeric(cut(sqft_basement, 100)),
-          lat = as.numeric(cut(lat, 1000)), long = as.numeric(cut(long, 100)))
+   mutate(sqft_living = as.numeric(cut(sqft_living, 100)), 
+          sqft_lot = as.numeric(cut(sqft_lot, 1000)),
+          sqft_above = as.numeric(cut(sqft_above, 100)), 
+          sqft_basement = as.numeric(cut(sqft_basement, 100)),
+          lat = as.numeric(cut(lat, 1000)), 
+          long = as.numeric(cut(long, 100)))
 ```
+
 ## Convert necessary columns into factors
 
 Some columns have fixed values and can be converted to factors.
@@ -294,7 +318,7 @@ str(housedata)
 ```
 
 ## Divide dataset into training and validation dataset
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
 test_index <- createDataPartition(y = housedata$price, times = 1, p = 0.1, list = FALSE)
 hdata_train <- housedata[-test_index,]
 hdata_validation <- housedata[test_index,]
@@ -304,59 +328,63 @@ hdata_validation <- housedata[test_index,]
 By definition, 
 $$\mbox{RMSE} = \sqrt{\frac{1}{n}\sum_{t=1}^{n}(actualData - predictedData)^2}$$
 
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
 RMSE <- function (x, test) sqrt(mean((x-test)^2))
 ```
 
 ## Naive mean value model
 A naive mean value model is taken as reference to be compared to other models. The prediction value is always equal to the mean value of prices in training set.
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
 mu <- mean(hdata_train$price)
 mean_model_rmse <- RMSE(mu, hdata_validation$price)
 ```
 
 ## Caret library based models
-<!--# Caret library to train better models
-# 1.Linear Regression 
-# 2.Generalized Linear Model 
-# 3.Stochastic Gradient Boosting 
-# 4.Generalized Additive Model using LOESS -->
-The following models are developed which are quick to train for the given dataset:
-1.Linear Regression \
-2.Generalized Linear Model \
-3.Stochastic Gradient Boosting \
-4.Generalized Additive Model using LOESS \
 
-```{r, echo=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
+The following models are developed which are quick to train for the given dataset:\
+1. Linear Regression \
+2. Generalized Linear Model \
+3. Stochastic Gradient Boosting \
+4. Generalized Additive Model using LOESS \
+
+```{r, echo=FALSE, warning=FALSE, include=FALSE}
 models <- c("lm", "glm", "gbm", "gamLoess")
 fits <- lapply(models, function(model) { 
    print(model)
    train(price ~ ., method = model, data = hdata_train)
 }) 
+```
+
+**Trained model details**:
+```{r, echo=FALSE, warning=FALSE, include=TRUE}
 fits
 ```
 
 Predict values on the validation set:
-```{r, echo=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE, eval=TRUE}
 pred <- sapply(fits, function(object) predict(object, newdata = hdata_validation))
 ```
 
 Define and find the RMSE values for the new models
-```{r, echo=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE, eval=TRUE}
 res <- as.data.frame(lapply(as.data.frame(pred), FUN = RMSE, hdata_validation$price))
 colnames(res) <- c("Linear Regression Model", "Generalized Linear Model", "Stochastic Gradient Boosting", "Gen Additive Model using LOESS")
 ```
 
-Comparison with a naive mean value model with the best model out of 4 - Stochastic Gradient Boosting
+Comparison with a naive mean value model with the best model out of 4 - **Stochastic Gradient Boosting**
+
 ```{r, echo=TRUE, warning=FALSE, message=FALSE, eval=TRUE}
 res["Mean Value Model"] = mean_model_rmse
 improvement_percentage <- ((mean_model_rmse - min(res[1,])) * 100 )/mean_model_rmse
 improvement_percentage
 ```
+Improvement Percentage over mean value model is `r improvement_percentage`.
 
 ## Final RMSE values for all models
-```{r, echo=TRUE, warning=FALSE, message=FALSE, eval=TRUE}
-res
+```{r, echo=FALSE}
+res %>% knitr::kable(caption = "RMSE Values for all Models")
 ```
 
 # Conclusion
@@ -381,7 +409,7 @@ As observed in the final RMSE values, an improvement of `r improvement_percentag
 [2] http://www.sthda.com/english/wiki/qplot-quick-plot-with-ggplot2-r-software-and-data-visualization \
 [3] https://bookdown.org/yihui/rmarkdown-cookbook/kable.html \
 [4] https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet \
-[5] https://www.kaggle.com
+[5] https://www.kaggle.com \
 [6] https://en.wikipedia.org/wiki/Kaggle
 
 \newpage

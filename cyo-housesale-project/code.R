@@ -143,7 +143,6 @@ housedata %>% filter(sqft_living < 7500) %>% ggplot(aes(x=sqft_living, y=price, 
 # Influence of number of sqft_lot on the price of house 
 housedata %>% ggplot(aes(x=sqft_lot, y=price, group=sqft_lot)) +
    geom_boxplot() +
-   scale_x_continuous(breaks = seq(0, 15, 1)) +
    scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
    labs(x = "sqft_lot", y = "Price of House ($)", caption = caption_text) + plot_theme
 
