@@ -246,7 +246,7 @@ mu <- mean(housedata$price)
    
    
 # #Advanced models to be executed on more powerful machines
-# models2 <- c("svmLinear", "rf", "xgbDART", "xgbLinear", "xgbTree", "elm", "neuralnet", "nnet", "pcaNNet")
+# models2 <- c("knn", svmLinear", "rf", "xgbDART", "xgbLinear", "xgbTree", "elm", "neuralnet", "nnet", "pcaNNet")
 # fits2 <- lapply(models2, function(model){ 
 #    print(model)
 #    train(price ~ ., method = model, data = hdata_train)
