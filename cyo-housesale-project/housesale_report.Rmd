@@ -391,19 +391,20 @@ A good insight into the data has been achieved specially through visualization. 
 Some prediction models were also developed for house prices. Among the different prediction models, the model based on **Stochastic Gradient Boosting** algorithm had the best performance and an improvement of `r improvement_percentage`% relative to the naive mean value based prediction model for house prices. This is definitely not the best model that can be developed for the given data. There are a huge number of more powerful algorithms available directly through the caret package (neuralnet, xgb, pcaNNet etc.) which can be tried on the given dataset. Better results require many iterations over different tuning parameters on powerful machines and run for significant period of time. However, the report demonstrates the essential techniques to reach a better model and we can develop on it further with more computing power and time.
 
 <!--
-```{r, echo=FALSE}
 # Advanced models to be executed on more powerful machines
-models2 <- c("knn", "svmLinear", "rf", "xgbDART", "xgbLinear", "xgbTree", "elm", "neuralnet", "nnet", "pcaNNet")
+#models2 <- c("knn", "svmLinear", "rf", "xgbDART", "xgbLinear", "xgbTree", "elm", "neuralnet", "nnet", "pcaNNet")
 
-fits2 <- lapply(models2, function(model){ 
-   train(price ~ ., method = model, data = hdata_train)
-}) 
-pred <- sapply(fits, function(object) predict(object, newdata = hdata_validation))
-adv_res <- as.data.frame(lapply(as.data.frame(pred), FUN = RMSE, hdata_validation$price))
-```
+#fits2 <- lapply(models2, function(model){ 
+#   train(price ~ ., method = model, data = hdata_train)
+#}) 
+#pred <- sapply(fits, function(object) predict(object, newdata = hdata_validation))
+#adv_res <- as.data.frame(lapply(as.data.frame(pred), FUN = RMSE, hdata_validation$price))
 -->
 
 <!-------------------------------------------------------------------------------------------------------->
+
+\newpage
+
 # References
 
 [1] Introduction to Data Science, Rafael A. Irizarry \
@@ -412,7 +413,3 @@ adv_res <- as.data.frame(lapply(as.data.frame(pred), FUN = RMSE, hdata_validatio
 [4] https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet \
 [5] https://www.kaggle.com \
 [6] https://en.wikipedia.org/wiki/Kaggle
-
-\newpage
-<!-------------------------------------------------------------------------------------------------------->
-
