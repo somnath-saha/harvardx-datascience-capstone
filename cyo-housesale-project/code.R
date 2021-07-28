@@ -152,7 +152,7 @@ lapply(grp_col_names_yr, function(c) {
       arrange(desc(Percentage)) %>% top_n(10)
    res
 })
-   
+
 # Influence of number of bedrooms on the price of house 
 housedata %>% filter(bedrooms < 15) %>% ggplot(aes(x=bedrooms, y=price, group=bedrooms)) +
    geom_boxplot() +
@@ -203,10 +203,10 @@ housedata %>% distinct_n(n = n())
 
 # Cut the continuous data values for the different areas in sqft
 housedata <- housedata %>% filter(sqft_living < 7500 && bedrooms < 15) %>% 
-             mutate(sqft_living = as.numeric(cut(sqft_living, 100)), sqft_lot = as.numeric(cut(sqft_lot, 1000)),
-                    sqft_living15 = as.numeric(cut(sqft_living15, 100)), sqft_lot15 = as.numeric(cut(sqft_lot15, 1000)),
-                    sqft_above = as.numeric(cut(sqft_above, 100)), sqft_basement = as.numeric(cut(sqft_basement, 100)),
-                    lat = as.numeric(cut(lat, 1000)), long = as.numeric(cut(long, 100)))
+   mutate(sqft_living = as.numeric(cut(sqft_living, 100)), sqft_lot = as.numeric(cut(sqft_lot, 1000)),
+          sqft_living15 = as.numeric(cut(sqft_living15, 100)), sqft_lot15 = as.numeric(cut(sqft_lot15, 1000)),
+          sqft_above = as.numeric(cut(sqft_above, 100)), sqft_basement = as.numeric(cut(sqft_basement, 100)),
+          lat = as.numeric(cut(lat, 1000)), long = as.numeric(cut(long, 100)))
 
 # Convert apt columns into factors
 col_names_for_factor <- c('bedrooms' ,'bathrooms', "floors", "waterfront", "view", "condition", "grade", "zipcode")
@@ -235,7 +235,7 @@ fits <- lapply(models, function(model){
 }) 
 pred <- sapply(fits, function(object) predict(object, newdata = validation))
 RMSE <- function (x, test) sqrt(mean((x-test$price)^2))
-x <- lapply(pred, FUN = RMSE, validation)
+x <- lapply(pred, FUN = RMSE, hdata_validation)
 
 # acc <- colMeans(pred == validation$price)
 # RMSE(pred, validation$price)
@@ -252,20 +252,21 @@ x <- lapply(pred, FUN = RMSE, validation)
 
 new_df <- as.data.frame(unlist(lapply(pred, FUN = RMSE, validation)), col.names=c("c","d"))
 
-fit1 <- train(price ~ ., method = "lm", data = hdata_test)
-fit1 <- train(price ~ ., method = "svmLinear", data = hdata_test)
-fit1 <- train(price ~ ., method = "knn", data = hdata_test)
-fit1 <- train(price ~ ., method = "gamLoess", data = hdata_test)
-fit1 <- train(price ~ ., method = "rf", data = hdata_test)
-fit1 <- train(price ~ ., method = "glm", data = hdata_test)
+fit1 <- train(price ~ ., method = "lm", data = hdata_train)
+fit1 <- train(price ~ ., method = "glm", data = hdata_train)
+fit1 <- train(price ~ ., method = "gbm", data = hdata_train)
+fit1 <- train(price ~ ., method = "knn", data = hdata_train)
+fit1 <- train(price ~ ., method = "gamLoess", data = hdata_train)
+fit1 <- train(price ~ ., method = "rf", data = hdata_train)
+fit1 <- train(price ~ ., method = "svmLinear", data = hdata_train)
 
-fit1 <- train(price ~ ., method = "xgbDART", data = hdata_test)
-fit1 <- train(price ~ ., method = "xgbLinear", data = hdata_test)
-fit1 <- train(price ~ ., method = "xgbTree", data = hdata_test)
-fit1 <- train(price ~ ., method = "elm", data = hdata_test)
-fit1 <- train(price ~ ., method = "neuralnet", data = hdata_test)
-fit1 <- train(price ~ ., method = "nnet", data = hdata_test)
-fit1 <- train(price ~ ., method = "pcaNNet", data = hdata_test)
+fit1 <- train(price ~ ., method = "xgbDART", data = hdata_train)
+fit1 <- train(price ~ ., method = "xgbLinear", data = hdata_train)
+fit1 <- train(price ~ ., method = "xgbTree", data = hdata_train)
+fit1 <- train(price ~ ., method = "elm", data = hdata_train)
+fit1 <- train(price ~ ., method = "neuralnet", data = hdata_train)
+fit1 <- train(price ~ ., method = "nnet", data = hdata_train)
+fit1 <- train(price ~ ., method = "pcaNNet", data = hdata_train)
 
 
 pred1 <- predict(fit1, newdata = validation)
