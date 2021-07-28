@@ -252,7 +252,7 @@ pred <- sapply(fits, function(object) predict(object, newdata = hdata_validation
 res <- as.data.frame(lapply(as.data.frame(pred), FUN = RMSE, hdata_validation$price))
 colnames(res) <- c("Linear Regression Model", "Generalized Linear Model", "Stochastic Gradient Boosting", "Gen Additive Model using LOESS")
 
-# Comparison with a naive model of predicting value with just the mean of all prices
+# Comparison with a naive mean value model with the best model out of 4 - Stochastic Gradient Boosting
 res["Mean Value Model"] = mean_model_rmse
 improvement_percentage <- ((mean_model_rmse - min(res[1,])) * 100 )/mean_model_rmse
    
