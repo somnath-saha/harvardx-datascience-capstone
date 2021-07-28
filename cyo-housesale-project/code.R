@@ -42,19 +42,16 @@ housedata <- read.csv("cyo-housesale-project/kc_house_data.csv", as.is = TRUE)
 
 # Find number of unique values in every column
 colNames <- colnames(housedata)
-res <- sapply(colNames, function(c) {
+sapply(colNames, function(c) {
    n <- n_distinct(housedata[[c]])
-   #paste(c, '-', n)
 }, simplify="array")
-res
 
-# Convert apt columns into factors
-col_names_for_factor <- c('bedrooms' ,'bathrooms', "floors", "waterfront", "view", "condition", "grade", "zipcode")
-housedata[,col_names_for_factor] <- lapply(housedata[,col_names_for_factor] , factor)
-str(housedata)
+
 
 # Create scatterplot of all the house price columns vs price
-housedata %>%
+housedata2 <- housedata %>% top_n(5000)
+
+housedata2 %>%
    gather(-price, key = "var", value = "value") %>%
    ggplot(aes(x = value, y = price)) +
    geom_point() +
@@ -173,9 +170,9 @@ housedata %>% ggplot(aes(x=bathrooms, y=price, group=bathrooms)) +
 
 
 # Influence of number of sqft_living on the price of house 
-housedata %>% filter(sqft_living < 10000) %>% ggplot(aes(x=sqft_living, y=price, group=sqft_living)) +
+housedata2 %>% filter(sqft_living < 7500) %>% ggplot(aes(x=sqft_living_grp, y=price, group=sqft_living_grp)) +
    geom_boxplot() +
-   #scale_x_continuous(breaks = seq(0, 15, 1)) +
+   #scale_x_continuous(breaks = seq(0, 7500, 500)) +
    scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
    labs(x = "sqft_living", y = "Price of House ($)", caption = caption_text) + plot_theme
 
@@ -186,48 +183,71 @@ housedata %>% ggplot(aes(x=sqft_lot, y=price, group=sqft_lot)) +
    scale_y_continuous(breaks = seq(0, 8000000, 1000000), labels = sprintf("%sM", seq(0, 8, 1))) +
    labs(x = "No of Bedrooms", y = "Price of House ($)", caption = caption_text) + plot_theme
 
+
+
+housedata2 %>% ggplot(aes(x = sqft_living_grp, y = price)) + geom_point()
+
 #Predicting values of price based on other available parameters
 #models <- c("glm", "lda", "naive_bayes", "svmLinear", "knn", "gamLoess", "multinom", "qda", "rf", "adaboost")
 #lm, svmLinear
 
+hdata_backup <- housedata
+housedata <- hdata_backup
 
 #Clean up data and remove outliers
-housedata %>% filter(sqft_living < 10000) 
-housedata %>% filter(bedrooms < 15)
+housedata %>% filter(sqft_living < 7500) %>% summarise(n = n(), percent = n / nrow(housedata))
+housedata %>% summarise(n = n())
+housedata %>% filter(bedrooms < 15) %>% summarise(n = n())
+housedata %>% summarise(n = n())
+housedata %>% distinct_n(n = n())
 
+# Cut the continuous data values for the different areas in sqft
+housedata <- housedata %>% filter(sqft_living < 7500 && bedrooms < 15) %>% 
+             mutate(sqft_living = as.numeric(cut(sqft_living, 100)), sqft_lot = as.numeric(cut(sqft_lot, 1000)),
+                    sqft_living15 = as.numeric(cut(sqft_living15, 100)), sqft_lot15 = as.numeric(cut(sqft_lot15, 1000)),
+                    sqft_above = as.numeric(cut(sqft_above, 100)), sqft_basement = as.numeric(cut(sqft_basement, 100)),
+                    lat = as.numeric(cut(lat, 1000)), long = as.numeric(cut(long, 100)))
+
+# Convert apt columns into factors
+col_names_for_factor <- c('bedrooms' ,'bathrooms', "floors", "waterfront", "view", "condition", "grade", "zipcode")
+housedata[,col_names_for_factor] <- lapply(housedata[,col_names_for_factor] , factor)
+str(housedata)
 
 
 hdata <- housedata %>% select(-id, -date, -sqft_living15, -sqft_lot15)
 test_index <- createDataPartition(y = hdata$price, times = 1, p = 0.1, list = FALSE)
-hdataTemp <- hdata[-test_index,]
-validation <- hdata[test_index,]
+hdata_train <- hdata[-test_index,]
+hdata_validation <- hdata[test_index,]
 
 test_index <- createDataPartition(y = hdataTemp$price, times = 1, p = 0.1, list = FALSE)
 hdata_train <- hdataTemp[-test_index,]
 hdata_test <- hdataTemp[test_index,]
 
-rm(hdata, hdataTemp)
+# rm(hdata, hdataTemp)
+# hdata_train <- hdata_train %>% select(price, bedrooms, bathrooms, sqft_living, sqft_basement, sqft_above)
+# hdata_test <- hdata_test %>% select(price, bedrooms, bathrooms, sqft_living, sqft_basement, sqft_above)
+# validation <- validation %>% select(price, bedrooms, bathrooms, sqft_living, sqft_basement, sqft_above)
 
 models <- c("lm", "glm", "gbm", "svmLinear", "knn", "gamLoess", "rf")
-
-models2 <- c("xgbDART", "xgbLinear", "xgbTree", "elm", "neuralnet", "nnet", "pcaNNet")
-
-hdata_train <- hdata_train %>% select(price, bedrooms, bathrooms, sqft_living, sqft_basement, sqft_above)
-hdata_test <- hdata_test %>% select(price, bedrooms, bathrooms, sqft_living, sqft_basement, sqft_above)
-validation <- validation %>% select(price, bedrooms, bathrooms, sqft_living, sqft_basement, sqft_above)
-
 fits <- lapply(models, function(model){ 
    print(model)
-   train(price ~ ., method = model, data = hdata_test)
+   train(price ~ ., method = model, data = hdata_train)
 }) 
 pred <- sapply(fits, function(object) predict(object, newdata = validation))
-acc <- colMeans(pred == validation$price)
-RMSE(pred, validation$price)
-acc
-
-pred <- as.data.frame(pred)
 RMSE <- function (x, test) sqrt(mean((x-test$price)^2))
-#RMSE <- function (x, test) nrow(test)
+x <- lapply(pred, FUN = RMSE, validation)
+
+# acc <- colMeans(pred == validation$price)
+# RMSE(pred, validation$price)
+# acc
+
+models2 <- c("xgbDART", "xgbLinear", "xgbTree", "elm", "neuralnet", "nnet", "pcaNNet")
+fits2 <- lapply(models2, function(model){ 
+   print(model)
+   train(price ~ ., method = model, data = hdata_train)
+}) 
+pred <- sapply(fits, function(object) predict(object, newdata = validation))
+RMSE <- function (x, test) sqrt(mean((x-test$price)^2))
 x <- lapply(pred, FUN = RMSE, validation)
 
 new_df <- as.data.frame(unlist(lapply(pred, FUN = RMSE, validation)), col.names=c("c","d"))
